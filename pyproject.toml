@@ -1,0 +1,114 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "fortimanager_template_sync"
+authors = [ {name = "Viktor Kertesz", email = "vkertesz2@gmail.com"},
+]
+
+readme = "README.rst"
+requires-python = ">=3.9,<4"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dynamic = ['version', 'description']
+
+dependencies = [
+    "GitPython",
+    "pydantic>2,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "pytest-cov",
+    "pytest",
+    "pylint",
+    "flit",
+    "isort",
+    "invoke",
+    "pre-commit"
+]
+
+[tool.flit.module]
+name = "fortimanager_template_sync"
+
+#[project.entry-points."nornir.plugins.inventory"]
+#"SQLInventory" = "nornir_sql.plugins.inventory.sql:SQLInventory"
+
+[project.scripts]
+fmgsync = "fortimanager_template_sync.run:main"
+
+[project.urls]
+Source = "https://github.com/viktorkertesz/fortimanager-template-sync"
+#Documentation = "https://"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+asyncio_mode = "auto"
+addopts = "-ra -q --cov=fortimanager_tempalte_sync --cov-report=term-missing"
+markers = [
+#    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+testpaths = [
+    "tests"
+]
+
+[tool.black]
+line-length = 120
+target-version = ['py39']
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | private
+    | docs
+    | db
+    | misc
+    | private
+  )/
+  | settings.py     # This is where you define files that should not be stylized by black
+                     # the root of the project
+)
+'''
+[tool.pylint.general]
+# fail-under = "8.0"
+
+[tool.pylint.basic]
+# No docstrings required for private methods (Pylint default), or for test_ functions, or for inner Meta classes.
+no-docstring-rgx="^(_|test_|Meta$)"
+good-names="db,nr,i,ip,j,k,ex,Run,_,fi,fo"
+
+[tool.pylint.messages_control]
+# Line length is enforced by Black, so pylint doesn't need to check it.
+# Pylint and Black disagree about how to format multi-line arrays; Black wins.
+disable = """,
+    line-too-long,
+    """
+
+[tool.pylint.miscellaneous]
+# Don't flag TODO_ as a failure, let us commit with things that still need to be done in the code
+notes = """,
+    FIXME,
+    XXX,
+    """
+
+[tool.isort]
+multi_line_output=3
+include_trailing_comma=true
+line_length=120

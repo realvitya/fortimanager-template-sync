@@ -1,0 +1,7 @@
+/.env
+__pycache__
+.idea/
+/private/
+/dist
+.coverage
+.relint.yml
