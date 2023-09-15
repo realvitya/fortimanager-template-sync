@@ -1,10 +1,11 @@
 """FMG tests"""
+# pylint: disable=unused-argument  # fixtures are confusing pylint
+# pylint: disable=protected-access  # ok for test
 from copy import deepcopy
 
 import pytest
-from pydantic import ValidationError
-from requests.exceptions import ConnectionError
-from requests.packages import urllib3
+from pydantic import SecretStr, ValidationError
+from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin # ok for this test module
 
 from fortimanager_template_sync.fmg_api.connection import FMG
 from fortimanager_template_sync.fmg_api.exceptions import FMGTokenException
@@ -13,14 +14,9 @@ from fortimanager_template_sync.fmg_api.settings import FMGSettings
 need_lab = pytest.mark.skipif(not pytest.lab_config, reason=f"Lab config {pytest.lab_config_file} does not exist!")
 
 
-@pytest.fixture
-def prepare_lab():
-    """Prepare global lab settings"""
-    # disable SSL warnings for testing
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
 class TestFMGSettings:
+    """FMGSettings test module"""
+
     config = {
         "base_url": "https://somehost",
         "verify": False,
@@ -49,6 +45,8 @@ class TestFMGSettings:
 
 @need_lab
 class TestLab:
+    """Lab tests"""
+
     config = pytest.lab_config.get("fmg")  # configured in conftest.py
 
     @pytest.mark.dependency()
@@ -74,3 +72,38 @@ class TestLab:
         conn = FMG(settings)
         with pytest.raises(ConnectionError):
             conn.open()
+
+    @pytest.mark.dependency(depends=["TestLab::test_fmg_lab_connect"])
+    def test_fmg_lab_expired_session(self, prepare_lab):
+        settings = FMGSettings(**self.config)
+        with FMG(settings) as conn:
+            conn._token = SecretStr("bad_token")
+            conn.get_version()
+
+    @pytest.mark.dependency(depends=["TestLab::test_fmg_lab_connect"])
+    def test_fmg_lab_expired_session_and_wrong_creds(self, prepare_lab):
+        """Simulate expired token and changed credentials"""
+        settings = FMGSettings(**self.config)
+        with FMG(settings) as conn:
+            conn._token = SecretStr("bad_token")
+            conn._settings.password = SecretStr("bad_password")
+            with pytest.raises(FMGTokenException, match="wrong credentials"):
+                conn.get_version()
+
+    @pytest.mark.dependency(depends=["TestLab::test_fmg_lab_connect"])
+    def test_fmg_lab_fail_logout_with_expired_token(self, prepare_lab, caplog):
+        """Simulate expired token by logout"""
+        settings = FMGSettings(**self.config)
+        with FMG(settings) as conn:
+            conn._token = SecretStr("bad_token")
+        assert "Logout failed" in caplog.text
+
+    @pytest.mark.dependency(depends=["TestLab::test_fmg_lab_connect"])
+    def test_fmg_lab_fail_logout_with_disconnect(self, prepare_lab, caplog):
+        """Simulate disconnection by logout"""
+        settings = FMGSettings(**self.config)
+        with FMG(settings) as conn:
+            conn._settings.base_url = "https://127.0.0.3/jsonrpc"
+            # conn._session.close()
+            # conn._session = requests.Session()
+        assert "Logout failed" in caplog.text
