@@ -17,12 +17,12 @@ repos:
 
 
 -   repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 23.7.0
     hooks:
     -   id: black
 
 -   repo: https://github.com/Yelp/detect-secrets
-    rev: v1.2.0
+    rev: v1.4.0
     hooks:
     -   id: detect-secrets
 
