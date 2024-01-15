@@ -24,6 +24,7 @@ dependencies = [
     "typer",
     "pydantic_settings",
     "more_itertools",
+    "pyfortinet"
 ]
 
 [project.optional-dependencies]
