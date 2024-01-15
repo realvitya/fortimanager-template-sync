@@ -23,6 +23,7 @@ dependencies = [
     "pydantic>2,<3",
     "typer",
     "pydantic_settings",
+    "more_itertools",
 ]
 
 [project.optional-dependencies]
@@ -35,7 +36,9 @@ dev = [
     "flit",
     "isort",
     "invoke",
-    "pre-commit"
+    "ruff",
+    "pre-commit",
+    "ruamel.yaml",
 ]
 
 rich = [
@@ -116,3 +119,33 @@ notes = """,
 multi_line_output=3
 include_trailing_comma=true
 line_length=120
+
+[tool.ruff]
+# docs: https://docs.astral.sh/ruff
+line-length = 120
+target-version = "py39"
+extend-exclude = ["private", ".idea"]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # pylint
+    "PL",
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.pymarkdown]
+plugins.md013.line_length = 120
