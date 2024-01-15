@@ -1,125 +1,200 @@
 """FMG connection"""
-import functools
 import logging
-from typing import Any, Optional
+from typing import Optional, List, Literal
 
-import requests
-from pydantic import SecretStr
-
-from fortimanager_template_sync.fmg_api.exceptions import FMGException, FMGTokenException
-from fortimanager_template_sync.fmg_api.settings import FMGSettings
+from pyfortinet.fmg import FMG, FMGResponse
 
 logger = logging.getLogger(__name__)
 
 
-def auth_required(func):
-    """decorator to provide authentication for the method"""
-
-    @functools.wraps(func)
-    def decorated(self, *args, **kwargs):
-        """method which needs authentication"""
-        if not self._token:  # pylint: disable=protected-access
-            raise FMGTokenException("No token was obtained. Open connection first!")
-        try:
-            return func(self, *args, **kwargs)
-        except FMGException as err:
-            try:  # try again after refreshing token
-                self._token = self._get_token()  # pylint: disable=protected-access  # decorator of methods
-                return func(self, *args, **kwargs)
-            except FMGException as err2:
-                raise err2 from err
-
-    return decorated
-
-
-class FMG:
+class FMGSync(FMG):
     """Fortimanager connection class"""
 
-    def __init__(self, settings: FMGSettings):
-        logger.debug("Initializing connection to %s", settings.base_url)
-        self._settings = settings
-        self._token: Optional[SecretStr] = None
-        self._session: Optional[requests.Session] = None
+    # CLI Template operations
 
-    def open(self):
-        """open connection"""
-        self._session = requests.Session()
-        self._token = self._get_token()
-
-    def close(self):
-        """close connection"""
-        # Logout and expire token
+    def add_cli_template(self,
+                         name: str,
+                         script: str,
+                         description: str = "",
+                         provision: Literal["disable", "enable"] = "disable",
+                         type: Literal["cli", "jinja"] = "jinja",
+                         variables: Optional[List[str]] = None,
+                         ) -> FMGResponse:
+        """Add CLI template"""
+        if not variables:
+            variables = []
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/cli/template"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template"
         request = {
-            "id": 1,
-            "method": "exec",
-            "params": [{"url": "/sys/logout"}],
-            "session": self._token.get_secret_value(),
+            "data": {
+                "description": description,
+                "name": name,
+                "provision": provision,
+                "script": script,
+                "type": type,
+                "variables": variables
+            },
+            "url": url,
         }
-        try:
-            req = self._session.post(self._settings.base_url, json=request, verify=self._settings.verify)
-            status = req.json().get("result", [{}])[0].get("status", {})
-            if status.get("code") != 0:
-                logger.warning("Logout failed!")
-        except requests.exceptions.ConnectionError:
-            logger.warning("Logout failed!")
+        return self.add(request)
 
-        self._session.close()
-        logger.debug("Closed session")
-
-    def __enter__(self):
-        self.open()
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self.close()
-
-    def _post(self, request: dict) -> Any:
-        req = self._session.post(self._settings.base_url, json=request, verify=self._settings.verify)
-        results = req.json().get("result", [])
-        if any(status := result["status"] for result in results if result["status"]["code"] != 0):
-            raise FMGException(status)
-        return results[0] if len(results) == 1 else results
-
-    def _get_token(self) -> SecretStr:
-        """Get authentication token
-
-        Raises:
-
-        """
-        logger.debug("Getting token..")
+    def update_cli_template(self,
+                            name: str,
+                            script: str,
+                            new_name: str = "",
+                            description: str = "",
+                            provision: Literal["disable", "enable"] = "disable",
+                            type: Literal["cli", "jinja"] = "jinja",
+                            variables: Optional[List[str]] = None,
+                            ) -> FMGResponse:
+        """Update a CLI template"""
+        if not variables:
+            variables = []
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/cli/template/{name}"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template/{name}"
+        if new_name:
+            name = new_name
         request = {
-            "id": 1,
-            "method": "exec",
-            "params": [
-                {
-                    "data": {"passwd": self._settings.password.get_secret_value(), "user": self._settings.username},
-                    "url": "/sys/login/user",
-                }
-            ],
+            "data": {
+                "description": description,
+                "name": name,
+                "provision": provision,
+                "script": script,
+                "type": type,
+                "variables": variables
+            },
+            "url": url,
         }
-        try:
-            req = self._session.post(self._settings.base_url, json=request, verify=self._settings.verify)
-            status = req.json().get("result", [{}])[0].get("status", {})
-            if status.get("code") != 0:
-                raise FMGTokenException("Login failed, wrong credentials!")
-            logger.debug("Token obtained")
-        except FMGTokenException as err:
-            logger.error("Can't gather token: %s", err)
-            raise err
-        except requests.exceptions.ConnectionError as err:
-            logger.error("Can't gather token: %s", err)
-            raise err
-        token = req.json().get("session", "")
-        return SecretStr(token)
+        return self.update(request)
 
-    @auth_required
-    def get_version(self) -> str:
-        """Gather FMG version"""
+    def get_cli_template(self, name: str) -> FMGResponse:
+        """Get a specific CLI template"""
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/cli/template/{name}"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template/{name}"
         request = {
-            "method": "get",
-            "params": [{"url": "/sys/status"}],
-            "id": 1,
-            "session": self._token.get_secret_value(),
+            "url": url,
         }
-        req = self._post(request)
-        return req["data"]["Version"]
+        return self.get(request)
+
+    def get_cli_templates(self, name_like: str = "", ) -> FMGResponse:
+        """Get CLI templates based on 'like' filter"""
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/cli/template"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template"
+        filter_list = []
+        if name_like:
+            filter_list.append(["name", "like", name_like])
+        request = {
+            "url": url,
+            "filter": filter_list,
+        }
+        return self.get(request)
+
+    def delete_cli_template(self, name: str) -> FMGResponse:
+        """Delete CLI template"""
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/cli/template/{name}"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template/{name}"
+        request = {
+            "url": url,
+        }
+        return self.delete(request)
+
+    # Template group operations
+
+    def add_cli_template_group(self,
+                               name: str,
+                               description: str = "",
+                               member: Optional[List[str]] = None,
+                               variables: Optional[List[str]] = None,
+                               ) -> FMGResponse:
+        """Add CLI template group"""
+        if not variables:
+            variables = []
+        if not member:
+            member = []
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/cli/template-group"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group"
+        request = {
+            "data": {
+                "description": description,
+                "name": name,
+                "member": member,
+                "variables": variables,
+            },
+            "url": url,
+        }
+        return self.add(request)
+
+    def update_cli_template_group(self,
+                                  name: str,
+                                  description: str = "",
+                                  member: Optional[List[str]] = None,
+                                  variables: Optional[List[str]] = None,
+                                  ) -> FMGResponse:
+        """Update CLI template group"""
+        if not variables:
+            variables = []
+        if not member:
+            member = []
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/cli/template-group"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group"
+        request = {
+            "data": {
+                "description": description,
+                "name": name,
+                "member": member,
+                "variables": variables,
+            },
+            "url": url,
+        }
+        return self.update(request)
+
+    def get_cli_template_group(self, name: str) -> FMGResponse:
+        """Get a specific CLI template group"""
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/cli/template-group/{name}"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group/{name}"
+        request = {
+            "url": url,
+        }
+        return self.get(request)
+
+    def get_cli_template_groups(self, name_like: str = "", ) -> FMGResponse:
+        """Get CLI template groups based on 'like' filter"""
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/cli/template-group"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group"
+        filter_list = []
+        if name_like:
+            filter_list.append(["name", "like", name_like])
+        request = {
+            "url": url,
+            "filter": filter_list,
+        }
+        return self.get(request)
+
+    def delete_cli_template_group(self, name: str) -> FMGResponse:
+        """Delete CLI template"""
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/cli/template-group/{name}"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group/{name}"
+        request = {
+            "url": url,
+        }
+        return self.delete(request)
