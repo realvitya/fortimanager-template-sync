@@ -32,16 +32,20 @@ def build(cmd):
 
 @task(
     help={
-        "all_docs": "Process all documents instead of the changed ones",
+        "push_to_github": "Push to GitHub pages after building the docs",
     }
 )
-def mkdocs(cmd, all_docs=False):  # pylint: disable=unused-argument  # until Sphinx implemented
+def mkdocs(cmd, push_to_github=False):
     """Compile docs"""
-    opts = []
-    if all_docs:
-        opts.append("-a")
-    # cmd.run("sphinx-build nautobot_scrapli_backup/docs-source docs " + " ".join(opts))
-    print("mkdocs is not yet implemented!")  # TODO: create Sphinx docs
+    cmd.run("mkdocs build")
+    if push_to_github:
+        cmd.run("mkdocs gh-deploy")
+
+
+@task()
+def mkdocs_serve(cmd):
+    """Run built-in webserver for docs"""
+    cmd.run("mkdocs serve")
 
 
 LinterType = Literal[
