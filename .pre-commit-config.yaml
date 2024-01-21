@@ -15,38 +15,46 @@ repos:
     -   id: check-toml
 #    -   id: check-added-large-files
 
-
--   repo: https://github.com/psf/black
-    rev: 23.7.0
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.4
     hooks:
-    -   id: black
+      - id: ruff-format
+        args: [--check]
+      - id: ruff
+
+#-   repo: https://github.com/psf/black
+#    rev: 23.7.0
+#    hooks:
+#    -   id: black
 
 -   repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:
     -   id: detect-secrets
 
--   repo: https://github.com/PyCQA/isort
-    rev: 5.10.1
-    hooks:
-    -   id: isort
-
--   repo: https://github.com/myint/rstcheck
-    rev: v6.1.1
-    hooks:
-    -   id: rstcheck
-
--   repo: local
-    hooks:
-    -   id: pylint
-        name: pylint
-        entry: pylint
-        language: system
-        types: [python]
-        require_serial: true
-
 -   repo: https://github.com/codingjoe/relint.git
     rev: 1.2.1
     hooks:
     -   id: relint
         name: check for sensitive patterns
+
+-   repo: local
+    hooks:
+    -   id: mypy
+        name: mypy
+        entry: mypy
+        language: system
+        types: [python]
+        require_serial: true
+
+-   repo: https://github.com/jackdewinter/pymarkdown
+    rev: v0.9.15
+    hooks:
+      - id: pymarkdown
+        pass_filenames: false
+        args:
+          - -s
+          - plugins.md013.heading_line_length=$#120
+          - scan
+          - -r
+          - ./docs

@@ -29,17 +29,16 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "black",
+#    "black",
     "pytest-cov",
     "pytest",
     "pytest-dependency",
-    "pylint",
     "flit",
-    "isort",
     "invoke",
     "ruff",
     "pre-commit",
     "ruamel.yaml",
+    "mypy",
     "jinja2",
 ]
 
@@ -66,6 +65,12 @@ minversion = "6.0"
 
 testpaths = [
     "tests"
+]
+
+[tool.mypy]
+show_error_codes = true
+plugins = [
+    "pydantic.mypy"
 ]
 
 [tool.black]
@@ -95,32 +100,6 @@ exclude = '''
                      # the root of the project
 )
 '''
-[tool.pylint.general]
-# fail-under = "8.0"
-
-[tool.pylint.basic]
-# No docstrings required for private methods (Pylint default), or for test_ functions, or for inner Meta classes.
-no-docstring-rgx="^(_|test_|Meta$)"
-good-names="db,nr,i,ip,j,k,ex,Run,_,fi,fo"
-
-[tool.pylint.messages_control]
-# Line length is enforced by Black, so pylint doesn't need to check it.
-# Pylint and Black disagree about how to format multi-line arrays; Black wins.
-disable = """,
-    line-too-long,
-    """
-
-[tool.pylint.miscellaneous]
-# Don't flag TODO_ as a failure, let us commit with things that still need to be done in the code
-notes = """,
-    FIXME,
-    XXX,
-    """
-
-[tool.isort]
-multi_line_output=3
-include_trailing_comma=true
-line_length=120
 
 [tool.ruff]
 # docs: https://docs.astral.sh/ruff
