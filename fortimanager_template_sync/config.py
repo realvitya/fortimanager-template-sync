@@ -45,14 +45,15 @@ class FMGSyncSettings(BaseSettings):
     fmg_user: str
     fmg_pass: SecretStr
     fmg_adom: str
+    fmg_verify: bool = True
     protected_fw_group: str
     debug: int = 0
-    logging_config: Optional[Union[str, dict]]
-    prod_run: bool
+    logging_config: Optional[Union[str, dict]] = None
+    prod_run: bool = False
 
     model_config = SettingsConfigDict(
-        # env_file="fmgsync.env", env_nested_delimiter="__",  # dotenv support moved to `main`
-        extra="ignore", case_sensitive=True, hide_input_in_errors=True
+        env_file="fmgsync.env", env_nested_delimiter="__", env_prefix="FMGSYNC_",
+        extra="ignore", case_sensitive=False, hide_input_in_errors=True
     )
 
     @field_validator("logging_config")
@@ -78,3 +79,8 @@ class FMGSyncSettings(BaseSettings):
                                    path=url.path
                                    )
         return str(url_with_token)
+
+    @field_validator("fmg_url", mode="after")
+    @classmethod
+    def validate_fmg_url(cls, url: AnyHttpUrl, info: ValidationInfo):
+        return str(url)

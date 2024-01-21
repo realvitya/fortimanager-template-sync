@@ -2,6 +2,7 @@
 import pytest
 from pyfortinet.fmg_api.common import F
 
+from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.fmg_api.connection import FMGSync
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup
 
@@ -9,13 +10,19 @@ need_lab = pytest.mark.skipif(not pytest.lab_config, reason=f"Lab config {pytest
 
 
 @need_lab
-class TestFMGApi:
+class TestFMGConnection:
     """Lab tests"""
 
-    fmg = FMGSync(**pytest.lab_config.get("fmg")).open()
+    fmg = FMGSync(
+        base_url=pytest.lab_config.fmg_url,
+        username=pytest.lab_config.fmg_user,
+        password=pytest.lab_config.fmg_pass,
+        adom=pytest.lab_config.fmg_adom,
+        verify=False,
+    ).open()
     fmg_connected = pytest.mark.skipif(
         not fmg._token,
-        reason=f"FMG {pytest.lab_config.get('fmg', {}).get('base_url')} is not connected!",
+        reason=f"FMG {pytest.lab_config.fmg_url} is not connected!",
     )
 
     @fmg_connected

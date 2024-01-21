@@ -126,7 +126,7 @@ line_length=120
 # docs: https://docs.astral.sh/ruff
 line-length = 120
 target-version = "py39"
-extend-exclude = ["private", ".idea"]
+extend-exclude = ["private", ".idea", "example", "docs"]
 
 [tool.ruff.lint]
 select = [

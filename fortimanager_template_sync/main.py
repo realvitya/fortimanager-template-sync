@@ -22,8 +22,8 @@ def run(
         str, typer.Option("--template-repo", "-t", envvar="FMGSYNC_TEMPLATE_REPO", help="Template repository URL")
     ] = None,
     template_branch: Annotated[
-        str, typer.Option("--template-branch", "-b", envvar="FMGSYNC_TEMPLATE_BRANCH",
-                          help="Branch in repository to sync")
+        str,
+        typer.Option("--template-branch", "-b", envvar="FMGSYNC_TEMPLATE_BRANCH", help="Branch in repository to sync"),
     ] = "main",
     git_token: Annotated[str, typer.Option("--git-token", envvar="FMGSYNC_GIT_TOKEN")] = None,
     local_repo: Annotated[Path, typer.Option("--local-path", "-l", envvar="FMGSYNC_LOCAL_PATH")] = "./fmg-templates/",
@@ -31,9 +31,15 @@ def run(
     fmg_user: Annotated[str, typer.Option("--fmg-user", "-u", envvar="FMGSYNC_FMG_USER")] = None,
     fmg_pass: Annotated[str, typer.Option("--fmg-pass", "-p", envvar="FMGSYNC_FMG_PASS")] = None,
     fmg_adom: Annotated[str, typer.Option("--fmg-adom", "-a", envvar="FMGSYNC_FMG_ADOM")] = "root",
+    fmg_verify: Annotated[bool, typer.Option("--fmg-verify", "-vf", envvar="FMGSYNC_FMG_VERIFY")] = True,
     protected_fw_group: Annotated[
-        str, typer.Option("--protected-firewall-group", "-pg", envvar="FMGSYNC_PROTECTED_FW_GROUP",
-                          help="This group in FMG will be checked for FW status. Also this group will be deployed only")
+        str,
+        typer.Option(
+            "--protected-firewall-group",
+            "-pg",
+            envvar="FMGSYNC_PROTECTED_FW_GROUP",
+            help="This group in FMG will be checked for FW status. Also this group will be deployed only",
+        ),
     ] = "production",
     version: Annotated[bool, typer.Option("--version", "-V", help="print version")] = False,
     prod_run: Annotated[bool, typer.Option("--force-changes", "-f", help="do changes")] = False,
@@ -56,6 +62,7 @@ def run(
         fmg_user=fmg_user,
         fmg_pass=fmg_pass,
         fmg_adom=fmg_adom,
+        fmg_adom_password=fmg_verify,
         protected_fw_group=protected_fw_group,
         prod_run=prod_run,
         debug=debug,

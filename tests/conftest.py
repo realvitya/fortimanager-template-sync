@@ -1,14 +1,16 @@
 """Pytest setup"""
 from pathlib import Path
 
+import dotenv
 import pytest
 import requests
-from ruamel.yaml import YAML
+
+from fortimanager_template_sync.config import FMGSyncSettings
 
 
 def pytest_addoption(parser):
     """Pytest options"""
-    parser.addoption("--lab_config", action="store", default="lab-config.yml")
+    parser.addoption("--lab_config", action="store", default="fmgsync.env")
 
 
 def pytest_configure(config):
@@ -16,9 +18,11 @@ def pytest_configure(config):
     pytest.lab_config_file = Path(config.getoption("--lab_config"))
     pytest.lab_config = {}
     if pytest.lab_config_file.is_file():
-        yaml = YAML(typ="safe", pure=True)
-        lab_config = yaml.load(pytest.lab_config_file)
-        pytest.lab_config = lab_config
+        # yaml = YAML(typ="safe", pure=True)
+        # lab_config = yaml.load(pytest.lab_config_file)
+        dotenv.load_dotenv(pytest.lab_config_file)
+        # settings will be taken from environment variables
+        pytest.lab_config = FMGSyncSettings()
 
 
 @pytest.fixture

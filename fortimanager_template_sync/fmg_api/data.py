@@ -1,7 +1,20 @@
 """Pydantic data types"""
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, field_validator
+
+
+class Variable(BaseModel):
+    name: str
+    description: Optional[str] = None
+    value: Optional[str] = None
+
+    def __eq__(self, other):
+        """Add support for string equality"""
+        if isinstance(other, str):
+            return self.name == other
+        else:
+            return super().__eq__(other)
 
 
 class CLITemplate(BaseModel):
@@ -10,7 +23,7 @@ class CLITemplate(BaseModel):
     provision: Literal["disable", "enable"] = "disable"
     script: str = ""
     type: Literal["cli", "jinja"] = "jinja"
-    variables: List[str] = None
+    variables: Optional[List[Variable]] = None
 
     @field_validator("provision", mode="before")
     def standardize_provision(cls, v):
@@ -33,4 +46,4 @@ class CLITemplateGroup(BaseModel):
     name: str
     description: str = ""
     member: List[str] = None
-    variables: List[str] = None
+    variables: Optional[List[Variable]] = None

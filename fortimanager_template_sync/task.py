@@ -7,8 +7,8 @@ from typing import Optional, List
 from git import Repo, InvalidGitRepositoryError, GitCommandError
 
 from fortimanager_template_sync.config import FMGSyncSettings
-from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup
-
+from fortimanager_template_sync.misc import find_all_vars
+from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable
 
 logger = logging.getLogger("fortimanager_template_sync.task")
 
@@ -135,13 +135,38 @@ class FMGSyncTask:
         """
         description = ""
         variables = []
-        # cut header comment
-        match = re.match(r"^{#(.*?)#}", data, re.S)
+        # gather metadata
+        match = re.match(r"^{#(.*?)#}", data, re.S + re.I)
         if match:
             header = match.group(1)
-            match = re.match(r"{#(.*)", header)
-            description = match.group(1)
+            description = header.splitlines()[0].strip()
+            match = re.search(r"(?<=used vars:)\s*(?P<vars>.*?)\n[\n#-]", header, flags=re.S + re.I)
+            if match and match.group("vars"):
+                vars_str = match.group("vars")
+                vars_list = vars_str.splitlines()
+                for var in vars_list:
+                    if ":" in var:
+                        var_name, var_description = var.split(":", maxsplit=1)
+                        var_value = None
+                        var_name = var_name.strip()
+                        var_description = var_description.strip()
+                        match = re.search(r"(?<=default:)\s*(?P<default>.*?)\)", var_description, flags=re.I)
+                        if match:
+                            var_value = match.group("default")
+                    else:
+                        var_name, var_description, var_value = var, None, None
+                    variables.append(Variable(name=var_name, description=var_description, value=var_value))
+        template_vars = find_all_vars(data)
+        # filter out built-in datasource
+        template_vars = [var for var in template_vars if not var.startswith("DVMDB")]
+        # filter out already documented variables
+        template_vars = [var for var in template_vars if var not in variables]
+        for template_var in template_vars:
+            variables.append(Variable(name=template_var))
 
-        return CLITemplate(name=name,
-                           description=description,
-                           variables=variables)
+        return CLITemplate(
+            name=name,
+            description=description,
+            variables=variables,
+            script=data
+        )
