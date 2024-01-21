@@ -6,9 +6,10 @@ from pydantic import field_validator, SecretStr, AnyHttpUrl, DirectoryPath
 from pydantic_core import Url
 from pydantic_core.core_schema import ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from ruamel import yaml
+from ruamel.yaml import YAML
 
-DEFAULT_LOGGING = yaml.safe_load(
+yaml = YAML(typ="safe", pure=True)
+DEFAULT_LOGGING = yaml.load(
     """\
 ---
 version: 1
@@ -37,7 +38,7 @@ root:
 class FMGSyncSettings(BaseSettings):
     """Application settings"""
 
-    git_token: SecretStr
+    git_token: Optional[SecretStr] = None
     template_repo: AnyHttpUrl
     template_branch: str
     local_repo: DirectoryPath
@@ -74,6 +75,8 @@ class FMGSyncSettings(BaseSettings):
     @field_validator("template_repo", mode="after")
     def update_token_in_repo_url(cls, url: AnyHttpUrl, info: ValidationInfo):
         git_token: SecretStr = info.data.get("git_token")  # type: ignore # calm mypy, type is assured by pydantic
+        if not git_token:
+            return str(url)
         url_with_token = Url.build(
             scheme=url.scheme, username=git_token.get_secret_value(), host=url.host or "", port=url.port, path=url.path
         )
