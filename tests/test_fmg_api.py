@@ -1,5 +1,6 @@
 """Test FMG API features"""
 import pytest
+from pyfortinet.fmg_api.common import F
 
 from fortimanager_template_sync.fmg_api.connection import FMGSync
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup
@@ -29,7 +30,7 @@ class TestFMGApi:
 
     @fmg_connected
     def test_get_cli_templates(self):
-        response = self.fmg.get_cli_templates(name_like="test_%")
+        response = self.fmg.get_cli_templates(F(name__like="test_%"))
         assert (
             "test_template" in (data["name"] for data in response.data.get("data")) and len(response.data["data"]) == 1
         )

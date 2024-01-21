@@ -1,8 +1,9 @@
 """FMG connection"""
 import logging
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Union
 
 from pyfortinet.fmg import FMG, FMGResponse
+from pyfortinet.fmg_api.common import FILTER_TYPE
 
 logger = logging.getLogger(__name__)
 
@@ -82,19 +83,18 @@ class FMGSync(FMG):
         }
         return self.get(request)
 
-    def get_cli_templates(self, name_like: str = "", ) -> FMGResponse:
-        """Get CLI templates based on 'like' filter"""
+    def get_cli_templates(self, filters: FILTER_TYPE = None) -> FMGResponse:
+        """Get CLI templates"""
         if self._settings.adom == "global":
             url = "/pm/config/global/obj/cli/template"
         else:
             url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template"
-        filter_list = []
-        if name_like:
-            filter_list.append(["name", "like", name_like])
+
         request = {
             "url": url,
-            "filter": filter_list,
         }
+        if filters:
+            request["filter"] = self._get_filter_list(filters)
         return self.get(request)
 
     def delete_cli_template(self, name: str) -> FMGResponse:

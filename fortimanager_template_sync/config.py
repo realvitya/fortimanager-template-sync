@@ -2,7 +2,9 @@
 from pathlib import Path
 from typing import Optional, Union
 
-from pydantic import field_validator
+from pydantic import field_validator, SecretStr, AnyHttpUrl, DirectoryPath
+from pydantic_core import Url
+from pydantic_core.core_schema import ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from ruamel import yaml
 
@@ -35,16 +37,26 @@ root:
 class FMGSyncSettings(BaseSettings):
     """Application settings"""
 
+    git_token: SecretStr
+    template_repo: AnyHttpUrl
+    template_branch: str
+    local_repo: DirectoryPath
+    fmg_url: AnyHttpUrl
+    fmg_user: str
+    fmg_pass: SecretStr
+    fmg_adom: str
+    protected_fw_group: str
     debug: int = 0
     logging_config: Optional[Union[str, dict]]
     prod_run: bool
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_nested_delimiter="__", extra="ignore", case_sensitive=True, hide_input_in_errors=True
+        # env_file="fmgsync.env", env_nested_delimiter="__",  # dotenv support moved to `main`
+        extra="ignore", case_sensitive=True, hide_input_in_errors=True
     )
 
-    @classmethod
     @field_validator("logging_config")
+    @classmethod
     def check_logging_config(cls, config):
         """prepare logging config and convert it to dict"""
         if config is None:
@@ -54,3 +66,15 @@ class FMGSyncSettings(BaseSettings):
                 config = yaml.safe_load(fi)
             return config
         raise ValueError(f"File '{config}' not found!")
+
+    @field_validator("template_repo", mode="after")
+    @classmethod
+    def update_token_in_repo_url(cls, url: AnyHttpUrl, info: ValidationInfo):
+        git_token: SecretStr = info.data.get("git_token")
+        url_with_token = Url.build(scheme=url.scheme,
+                                   username=git_token.get_secret_value(),
+                                   host=url.host,
+                                   port=url.port,
+                                   path=url.path
+                                   )
+        return str(url_with_token)
