@@ -1,0 +1,47 @@
+{# Initial setup for FG100F for firewall
+updated: 2023.02.14.
+1. Remove port1-20 from lan switch
+2. clears DHCP server configuration
+3. setup mgmt interface
+4. adds default route for mgmt interface
+
+Used vars:
+mgmt_interface  : Management interface name (default: mgmt)
+mgmt_ip         : mgmt interface ip/nm (e.g. 1.1.1.1/24)
+mgmt_gateway    : mgmt interface default gw (e.g 1.1.1.2)
+-#}
+{# j2lint: disable=jinja-statements-delimiter #}
+config system dhcp server
+    {%- for i in range(1,4) %}
+    delete {{ i }}
+    {%- endfor %}
+end
+config firewall address
+    delete "lan"
+    delete "dmz"
+end
+config firewall policy
+    delete 1
+end
+config system virtual-switch
+    delete "lan"
+end
+config router static
+    edit 1
+        set gateway {{ mgmt_gateway }}
+        set device "mgmt"
+    next
+end
+config system interface
+    edit "{{ mgmt_interface }}"
+        set ip {{ mgmt_ip }}
+        set allowaccess ping https ssh fgfm
+    next
+end
+config system global
+    {%- if hostname is defined %}
+    set alias "{{ hostname }}"
+    set hostname "{{ hostname }}"
+    {%- endif %}
+    set timezone 80
+end
