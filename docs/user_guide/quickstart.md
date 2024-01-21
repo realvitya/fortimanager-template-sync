@@ -10,6 +10,7 @@ pip install fortimanager_template_sync
 ```
 
 ## Setup
+
 It is advisable to use environment variables to configure the code run.
 
 These are the usable variables with example data:
@@ -27,9 +28,10 @@ FMGSYNC_PROTECTED_FW_GROUP=production
 ```
 
 ## Test
+
 List options:
 
-```
+```shell
 fmgsync -h
 
 Usage: fmgsync [OPTIONS]
@@ -47,7 +49,7 @@ Options:
 
 To run a dry-run sync which doesn't modify FMG at all, run the command without any option:
 
-```
+```shell
 fmgsync
 
 TODO: show a test run output

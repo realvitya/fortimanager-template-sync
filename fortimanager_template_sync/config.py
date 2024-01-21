@@ -52,12 +52,15 @@ class FMGSyncSettings(BaseSettings):
     prod_run: bool = False
 
     model_config = SettingsConfigDict(
-        env_file="fmgsync.env", env_nested_delimiter="__", env_prefix="FMGSYNC_",
-        extra="ignore", case_sensitive=False, hide_input_in_errors=True
+        env_file="fmgsync.env",
+        env_nested_delimiter="__",
+        env_prefix="FMGSYNC_",
+        extra="ignore",
+        case_sensitive=False,
+        hide_input_in_errors=True,
     )
 
     @field_validator("logging_config")
-    @classmethod
     def check_logging_config(cls, config):
         """prepare logging config and convert it to dict"""
         if config is None:
@@ -69,18 +72,13 @@ class FMGSyncSettings(BaseSettings):
         raise ValueError(f"File '{config}' not found!")
 
     @field_validator("template_repo", mode="after")
-    @classmethod
     def update_token_in_repo_url(cls, url: AnyHttpUrl, info: ValidationInfo):
-        git_token: SecretStr = info.data.get("git_token")
-        url_with_token = Url.build(scheme=url.scheme,
-                                   username=git_token.get_secret_value(),
-                                   host=url.host,
-                                   port=url.port,
-                                   path=url.path
-                                   )
+        git_token: SecretStr = info.data.get("git_token")  # type: ignore # calm mypy, type is assured by pydantic
+        url_with_token = Url.build(
+            scheme=url.scheme, username=git_token.get_secret_value(), host=url.host or "", port=url.port, path=url.path
+        )
         return str(url_with_token)
 
     @field_validator("fmg_url", mode="after")
-    @classmethod
     def validate_fmg_url(cls, url: AnyHttpUrl, info: ValidationInfo):
         return str(url)

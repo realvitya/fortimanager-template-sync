@@ -3,6 +3,7 @@ import logging
 import time
 from logging.config import dictConfig
 from pathlib import Path
+from typing import Optional
 
 import dotenv
 import typer
@@ -45,7 +46,7 @@ def run(
     prod_run: Annotated[bool, typer.Option("--force-changes", "-f", help="do changes")] = False,
     debug: Annotated[int, typer.Option("--debug", "-D", help="debug logs", count=True)] = 0,
     logging_config: Annotated[
-        str, typer.Option("--logging_config", "-l", help="logging config file in YAML format")
+        Optional[str], typer.Option("--logging_config", "-l", help="logging config file in YAML format")
     ] = None,
 ):
     """Main program"""
@@ -62,7 +63,7 @@ def run(
         fmg_user=fmg_user,
         fmg_pass=fmg_pass,
         fmg_adom=fmg_adom,
-        fmg_adom_password=fmg_verify,
+        fmg_verify=fmg_verify,
         protected_fw_group=protected_fw_group,
         prod_run=prod_run,
         debug=debug,

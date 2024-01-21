@@ -15,7 +15,8 @@ logger = logging.getLogger("fortimanager_template_sync.task")
 
 class TemplateTree:
     """Template data structure"""
-    prerun_templates: List[CLITemplate]
+
+    pre_run_templates: List[CLITemplate]
     templates: List[CLITemplate]
     template_groups: List[CLITemplateGroup]
 
@@ -76,8 +77,8 @@ class FMGSyncTask:
 
         ```
         pre-run/
-            prerun1.j2
-            prerun2.j2
+            pre-run1.j2
+            pre-run2.j2
             ...
         templates/
             template1.j2
@@ -103,13 +104,14 @@ class FMGSyncTask:
             return repo
         except InvalidGitRepositoryError:  # in case of an empty directory
             logger.info("Cloning template repository")
-            repo = Repo.clone_from(url=self.settings.template_repo,
-                                   to_path=self.settings.local_repo,
-                                   branch=self.settings.template_branch)
+            repo = Repo.clone_from(
+                url=self.settings.template_repo, to_path=self.settings.local_repo, branch=self.settings.template_branch
+            )
             return repo
         except GitCommandError:
-            logger.error("Can't checkout repo: '%s' branch: '%s'",
-                         self.settings.template_repo, self.settings.template_branch)
+            logger.error(
+                "Can't checkout repo: '%s' branch: '%s'", self.settings.template_repo, self.settings.template_branch
+            )
             raise
 
     def _load_local_repository(self) -> TemplateTree:
@@ -120,10 +122,11 @@ class FMGSyncTask:
             for template_file in template_path.glob("*.j2"):
                 with open(template_file) as fi:
                     data = fi.read()
-                    parsed_data = self._parse_template_file(template_file.name.replace("*.j2", ""), data)
+                    parsed_data = self._parse_template_file(name=template_file.name.replace("*.j2", ""), data=data)
                     templates.append(parsed_data)
 
-    def _parse_template_file(self, name: str, data: str) -> CLITemplate:
+    @staticmethod
+    def _parse_template_file(name: str, data: str) -> CLITemplate:
         """Parse template script text
 
         Expected format for metadata (head comment):
@@ -164,9 +167,4 @@ class FMGSyncTask:
         for template_var in template_vars:
             variables.append(Variable(name=template_var))
 
-        return CLITemplate(
-            name=name,
-            description=description,
-            variables=variables,
-            script=data
-        )
+        return CLITemplate(name=name, description=description, variables=variables, script=data)

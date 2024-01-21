@@ -45,5 +45,5 @@ class CLITemplate(BaseModel):
 class CLITemplateGroup(BaseModel):
     name: str
     description: str = ""
-    member: List[str] = None
+    member: Optional[List[str]] = None
     variables: Optional[List[Variable]] = None
