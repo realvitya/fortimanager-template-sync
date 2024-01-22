@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, List
 
 from git import Repo, InvalidGitRepositoryError, GitCommandError
+from pydantic.dataclasses import dataclass
 
 from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.misc import find_all_vars
@@ -13,9 +14,9 @@ from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGrou
 logger = logging.getLogger("fortimanager_template_sync.task")
 
 
+@dataclass
 class TemplateTree:
     """Template data structure"""
-
     pre_run_templates: List[CLITemplate]
     templates: List[CLITemplate]
     template_groups: List[CLITemplateGroup]
@@ -124,6 +125,25 @@ class FMGSyncTask:
                     data = fi.read()
                     parsed_data = self._parse_template_file(name=template_file.name.replace("*.j2", ""), data=data)
                     templates.append(parsed_data)
+
+        pre_run_templates = []
+        template_path = Path(self.settings.local_repo) / "pre-run"
+        if template_path.is_dir():
+            for template_file in template_path.glob("*.j2"):
+                with open(template_file) as fi:
+                    data = fi.read()
+                    parsed_data = self._parse_template_file(name=template_file.name.replace("*.j2", ""), data=data)
+                    parsed_data.provision = "enable"
+                    templates.append(parsed_data)
+
+        template_groups = []
+        template_path = Path(self.settings.local_repo) / "template-groups"
+        if template_path.is_dir():
+            for template_group_file in template_path.glob("*.j2"):
+                with open(template_group_file) as fi:
+                    data = fi.read()
+
+        return TemplateTree(templates=templates, pre_run_templates=pre_run_templates, template_groups=template_groups)
 
     @staticmethod
     def _parse_template_file(name: str, data: str) -> CLITemplate:

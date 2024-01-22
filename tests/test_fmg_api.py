@@ -1,5 +1,6 @@
 """Test FMG API features"""
 import pytest
+from pyfortinet.exceptions import FMGUnhandledException
 from pyfortinet.fmg_api.common import F
 
 from fortimanager_template_sync.config import FMGSyncSettings
@@ -31,6 +32,23 @@ class TestFMGConnection:
         assert response.success
 
     @fmg_connected
+    def test_add_cli_template_with_non_existing_variable(self):
+        with pytest.raises(FMGUnhandledException, match=r"variable '\w+' not exist"):
+            response = self.fmg.add_cli_template(name="test_template_var", script="{{ var1 }} {% if var2 %}{% endif %}")
+
+    @fmg_connected
+    def test_add_variables(self):
+        response = self.fmg.add_fmg_variable(name="var1")
+        assert response.success
+        response = self.fmg.add_fmg_variable(name="var2", value="var2_default")
+        assert response.success
+
+    @fmg_connected
+    def test_add_cli_template_with_existing_variable(self):
+        response = self.fmg.add_cli_template(name="test_template_var", script="{{ var1 }} {% if var2 %}{% endif %}")
+        assert response.success
+
+    @fmg_connected
     def test_get_cli_template(self):
         response = self.fmg.get_cli_template("test_template")
         assert response.success
@@ -39,7 +57,7 @@ class TestFMGConnection:
     def test_get_cli_templates(self):
         response = self.fmg.get_cli_templates(F(name__like="test_%"))
         assert (
-            "test_template" in (data["name"] for data in response.data.get("data")) and len(response.data["data"]) == 1
+            "test_template" in (data["name"] for data in response.data.get("data")) and len(response.data["data"]) == 2
         )
 
     @fmg_connected

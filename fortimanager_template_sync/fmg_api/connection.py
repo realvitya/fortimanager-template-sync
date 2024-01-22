@@ -205,3 +205,71 @@ class FMGSync(FMG):
             "url": url,
         }
         return self.delete(request)
+
+    def add_fmg_variable(self, name: str, value: Optional[str] = None, description: Optional[str] = None) -> FMGResponse:
+        """Add metadata variable to use in CLI templates
+
+        Args:
+            name (str): variable name
+            value (str): default value
+            description (str): variable description
+        """
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/fmg/variable"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/fmg/variable"
+        request = {
+            "data": {
+                "description": description,
+                "name": name,
+                "value": value,
+            },
+            "url": url,
+        }
+        return self.add(request)
+
+    def get_fmg_variable(self, name: str) -> FMGResponse:
+        """Get a specific variable"""
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/fmg/variable/{name}"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/fmg/variable/{name}"
+        request = {
+            "url": url,
+        }
+        return self.get(request)
+
+    def get_fmg_variables(self, filters: FILTER_TYPE = None) -> FMGResponse:
+        """Get metadata variables based on filter"""
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/fmg/variable"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/fmg/variable"
+        request = {
+            "url": url,
+        }
+        if filters:
+            request["filter"] = self._get_filter_list(filters)
+        return self.get(request)
+
+    def update_fmg_variable(self, name: str, value: Optional[str] = None, description: Optional[str] = None) -> FMGResponse:
+        """Update metadata variable to use in CLI templates
+
+        Args:
+            name (str): variable name
+            value (str): default value
+            description (str): variable description
+        """
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/fmg/variable"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/fmg/variable"
+        request = {
+            "data": {
+                "description": description,
+                "name": name,
+                "value": value,
+            },
+            "url": url,
+        }
+        return self.update(request)
