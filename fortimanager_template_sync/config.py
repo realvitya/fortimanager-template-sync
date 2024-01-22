@@ -39,10 +39,10 @@ class FMGSyncSettings(BaseSettings):
     """Application settings"""
 
     git_token: Optional[SecretStr] = None
-    template_repo: AnyHttpUrl
+    template_repo: str
     template_branch: str
     local_repo: DirectoryPath
-    fmg_url: AnyHttpUrl
+    fmg_url: str
     fmg_user: str
     fmg_pass: SecretStr
     fmg_adom: str
@@ -68,20 +68,24 @@ class FMGSyncSettings(BaseSettings):
             return DEFAULT_LOGGING
         if Path(config).is_file():
             with open(config, encoding="UTF-8") as fi:
-                config = yaml.safe_load(fi)
+                config = yaml.load(fi)
             return config
         raise ValueError(f"File '{config}' not found!")
 
     @field_validator("template_repo", mode="after")
-    def update_token_in_repo_url(cls, url: AnyHttpUrl, info: ValidationInfo):
+    def update_token_in_repo_url(cls, v: str, info: ValidationInfo):
+        """add token to url if needed"""
+        url = AnyHttpUrl(v)
         git_token: SecretStr = info.data.get("git_token")  # type: ignore # calm mypy, type is assured by pydantic
         if not git_token:
-            return str(url)
+            return v
         url_with_token = Url.build(
             scheme=url.scheme, username=git_token.get_secret_value(), host=url.host or "", port=url.port, path=url.path
         )
         return str(url_with_token)
 
     @field_validator("fmg_url", mode="after")
-    def validate_fmg_url(cls, url: AnyHttpUrl, info: ValidationInfo):
-        return str(url)
+    def validate_fmg_url(cls, url: str):
+        """convert value to string"""
+        assert AnyHttpUrl(url)
+        return url
