@@ -17,6 +17,7 @@ logger = logging.getLogger("fortimanager_template_sync.task")
 @dataclass
 class TemplateTree:
     """Template data structure"""
+
     pre_run_templates: List[CLITemplate]
     templates: List[CLITemplate]
     template_groups: List[CLITemplateGroup]
@@ -123,7 +124,7 @@ class FMGSyncTask:
             for template_file in template_path.glob("*.j2"):
                 with open(template_file) as fi:
                     data = fi.read()
-                    parsed_data = self._parse_template_file(name=template_file.name.replace("*.j2", ""), data=data)
+                    parsed_data = self._parse_template_data(name=template_file.name.replace("*.j2", ""), data=data)
                     templates.append(parsed_data)
 
         pre_run_templates = []
@@ -132,9 +133,9 @@ class FMGSyncTask:
             for template_file in template_path.glob("*.j2"):
                 with open(template_file) as fi:
                     data = fi.read()
-                    parsed_data = self._parse_template_file(name=template_file.name.replace("*.j2", ""), data=data)
+                    parsed_data = self._parse_template_data(name=template_file.name.replace("*.j2", ""), data=data)
                     parsed_data.provision = "enable"
-                    templates.append(parsed_data)
+                    pre_run_templates.append(parsed_data)
 
         template_groups = []
         template_path = Path(self.settings.local_repo) / "template-groups"
@@ -142,11 +143,15 @@ class FMGSyncTask:
             for template_group_file in template_path.glob("*.j2"):
                 with open(template_group_file) as fi:
                     data = fi.read()
+                    parsed_data = self._parse_template_groups_data(
+                        name=template_group_file.name.replace("*.j2", ""), data=data, templates=templates
+                    )
+                    template_groups.append(parsed_data)
 
         return TemplateTree(templates=templates, pre_run_templates=pre_run_templates, template_groups=template_groups)
 
     @staticmethod
-    def _parse_template_file(name: str, data: str) -> CLITemplate:
+    def _parse_template_data(name: str, data: str) -> CLITemplate:
         """Parse template script text
 
         Expected format for metadata (head comment):
@@ -188,3 +193,24 @@ class FMGSyncTask:
             variables.append(Variable(name=template_var))
 
         return CLITemplate(name=name, description=description, variables=variables, script=data)
+
+    @staticmethod
+    def _parse_template_groups_data(
+        name: str, data: str, templates: Optional[List[CLITemplate]] = None
+    ) -> CLITemplateGroup:
+        """Parse template group file"""
+        description = None
+        members = []
+        variables = []
+        # gather metadata
+        match = re.match(r"^{#(.*?)#}", data, re.S + re.I)
+        if match:
+            header = match.group(1)
+            description = header.splitlines()[0].strip()
+        # gather members
+        for match in re.finditer(r"{%\s*include\s*\"templates/(?P<member>.*).j2\"\s*%}", data, re.M):
+            members.append(match.group("member"))
+        # gather variables
+        for template in templates:
+            variables.extend(template.variables)  # flat out lists
+        return CLITemplateGroup(name=name, description=description, member=members, variables=variables)

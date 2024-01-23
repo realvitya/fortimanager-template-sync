@@ -3,7 +3,6 @@ import pytest
 from pyfortinet.exceptions import FMGUnhandledException
 from pyfortinet.fmg_api.common import F
 
-from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.fmg_api.connection import FMGSync
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup
 
@@ -106,4 +105,4 @@ class TestFMGConnection:
 
     @fmg_connected
     def test_close_fmg(self):
-        self.fmg.close(discard_changes=True)
+        self.fmg.close(discard_changes=not pytest.keep_lab)

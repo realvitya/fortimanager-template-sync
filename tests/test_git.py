@@ -9,7 +9,7 @@ from typing import Callable, Tuple
 import pytest
 from git import Repo
 
-from fortimanager_template_sync.fmg_api.data import Variable
+from fortimanager_template_sync.fmg_api.data import Variable, CLITemplate
 from fortimanager_template_sync.task import FMGSyncTask
 
 need_lab = pytest.mark.skipif(not pytest.lab_config, reason=f"Lab config {pytest.lab_config_file} does not exist!")
@@ -60,7 +60,7 @@ class TestGit:
         assert isinstance(repo, Repo)
         assert Path(repo.working_dir) == self.task.settings.local_repo.absolute()
 
-    def test_parse_template_file(self):
+    def test_parse_template_data(self):
         """Test parse template file"""
         name = "test_template"
         data = textwrap.dedent(
@@ -86,11 +86,44 @@ class TestGit:
             {{ undocumented_var }}
             """
         )
-        template = self.task._parse_template_file(name=name, data=data)
+        template = self.task._parse_template_data(name=name, data=data)
         # test string comparison
         assert "mgmt_interface" in template.variables
         # test object comparison
         assert Variable(name="mgmt_ip", description="mgmt interface ip/nm (e.g. 1.1.1.1/24)") in template.variables
+
+    def test_parse_template_group_data(self):
+        """Test parsing of template-group"""
+        name = "test_template_group"
+        data = textwrap.dedent(
+            """\
+            {# Test template group
+            -#}
+            {# j2lint: disable=jinja-statements-delimiter #}
+            {% include "templates/template1.j2" %}
+            
+            {% include "templates/template2.j2" %}
+            """
+        )
+        template1 = CLITemplate(
+            name="template1",
+            variables=[
+                Variable(name="var1"),
+                Variable(name="var2")
+            ]
+        )
+        template2 = CLITemplate(
+            name="template2",
+            variables=[
+                Variable(name="var3"),
+                Variable(name="var4")
+            ]
+        )
+        templates = [template1, template2]
+        template_group = self.task._parse_template_groups_data(name=name, data=data, templates=templates)
+        assert all([var in template_group.variables for var in ["var1", "var2", "var3", "var4"]]) and \
+               template_group.description == "Test template group" and \
+               template_group.member == ["template1", "template2"]
 
     def test_load_local_repository(self):
         """Test load local repository"""
