@@ -5,9 +5,11 @@ from pathlib import Path
 from typing import Optional, List
 
 from git import Repo, InvalidGitRepositoryError, GitCommandError
+from more_itertools import first
 from pydantic.dataclasses import dataclass
 
 from fortimanager_template_sync.config import FMGSyncSettings
+from fortimanager_template_sync.exceptions import FMGSyncVariableException
 from fortimanager_template_sync.misc import find_all_vars
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable
 
@@ -124,7 +126,7 @@ class FMGSyncTask:
             for template_file in template_path.glob("*.j2"):
                 with open(template_file) as fi:
                     data = fi.read()
-                    parsed_data = self._parse_template_data(name=template_file.name.replace("*.j2", ""), data=data)
+                    parsed_data = self._parse_template_data(name=template_file.name.replace(".j2", ""), data=data)
                     templates.append(parsed_data)
 
         pre_run_templates = []
@@ -133,7 +135,7 @@ class FMGSyncTask:
             for template_file in template_path.glob("*.j2"):
                 with open(template_file) as fi:
                     data = fi.read()
-                    parsed_data = self._parse_template_data(name=template_file.name.replace("*.j2", ""), data=data)
+                    parsed_data = self._parse_template_data(name=template_file.name.replace(".j2", ""), data=data)
                     parsed_data.provision = "enable"
                     pre_run_templates.append(parsed_data)
 
@@ -144,7 +146,7 @@ class FMGSyncTask:
                 with open(template_group_file) as fi:
                     data = fi.read()
                     parsed_data = self._parse_template_groups_data(
-                        name=template_group_file.name.replace("*.j2", ""), data=data, templates=templates
+                        name=template_group_file.name.replace(".j2", ""), data=data, templates=templates
                     )
                     template_groups.append(parsed_data)
 
@@ -168,7 +170,7 @@ class FMGSyncTask:
         if match:
             header = match.group(1)
             description = header.splitlines()[0].strip()
-            match = re.search(r"(?<=used vars:)\s*(?P<vars>.*?)\n[\n#-]", header, flags=re.S + re.I)
+            match = re.search(r"(?<=used vars:)\s*(?P<vars>.*?)\n(?:[\n#-]|$)", header, flags=re.S + re.I)
             if match and match.group("vars"):
                 vars_str = match.group("vars")
                 vars_list = vars_str.splitlines()
@@ -195,6 +197,30 @@ class FMGSyncTask:
         return CLITemplate(name=name, description=description, variables=variables, script=data)
 
     @staticmethod
+    def _sanitize_variables(variables: List[Variable]) -> List[Variable]:
+        """De-dup and check variables, so they are uniq in name and default value
+
+        Args:
+            variables: input list of variables
+
+        Returns:
+            list of variables
+
+        Raises:
+            FMGSyncVariableException on variable definitions
+        """
+        good_variables = []
+        for variable in variables:
+            if variable.name not in good_variables:
+                good_variables.append(variable)
+                continue
+            existing_var = first([var for var in good_variables if var.name == variable.name])
+            if variable.value != existing_var.value:
+                raise FMGSyncVariableException(f"Variable {variable.name} has multiple default values amongst templates!")
+
+        return good_variables
+
+    @staticmethod
     def _parse_template_groups_data(
         name: str, data: str, templates: Optional[List[CLITemplate]] = None
     ) -> CLITemplateGroup:
@@ -213,4 +239,7 @@ class FMGSyncTask:
         # gather variables
         for template in templates:
             variables.extend(template.variables)  # flat out lists
+        # deduplicate and sanity check on variables
+        variables = FMGSyncTask._sanitize_variables(variables=variables)
+
         return CLITemplateGroup(name=name, description=description, member=members, variables=variables)

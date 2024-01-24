@@ -11,3 +11,7 @@ class FMGSyncConfigurationException(FMGSyncException):
 
 class FMGSyncConnectionException(FMGSyncException):
     """Error while connecting to FMG"""
+
+
+class FMGSyncVariableException(FMGSyncException):
+    """Error by variable definitions"""

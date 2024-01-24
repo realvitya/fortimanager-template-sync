@@ -9,6 +9,7 @@ from typing import Callable, Tuple
 import pytest
 from git import Repo
 
+from fortimanager_template_sync.exceptions import FMGSyncVariableException
 from fortimanager_template_sync.fmg_api.data import Variable, CLITemplate
 from fortimanager_template_sync.task import FMGSyncTask
 
@@ -92,6 +93,27 @@ class TestGit:
         # test object comparison
         assert Variable(name="mgmt_ip", description="mgmt interface ip/nm (e.g. 1.1.1.1/24)") in template.variables
 
+    def test_sanitize_good_vars(self):
+        """Test sanitize_variables with same default values"""
+        variables = [
+            Variable(name="var1"),
+            Variable(name="var2"),
+            Variable(name="var3"),
+            Variable(name="var1", description="Ignored description"),
+        ]
+        assert len(self.task._sanitize_variables(variables)) == 3
+
+    def test_sanitize_conflicting_vars(self):
+        """Test sanitize_variables with different default values"""
+        variables = [
+            Variable(name="var1", value="1"),
+            Variable(name="var2"),
+            Variable(name="var3"),
+            Variable(name="var1", value="2", description="Ignored description"),
+        ]
+        with pytest.raises(FMGSyncVariableException):
+            self.task._sanitize_variables(variables)
+
     def test_parse_template_group_data(self):
         """Test parsing of template-group"""
         name = "test_template_group"
@@ -127,3 +149,8 @@ class TestGit:
 
     def test_load_local_repository(self):
         """Test load local repository"""
+        templates = self.task._load_local_repository()
+        # only check if we read something. Useful to test custom test repositories
+        assert templates.templates
+        assert templates.pre_run_templates
+        assert templates.template_groups[0].member

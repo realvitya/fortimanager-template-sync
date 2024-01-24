@@ -25,6 +25,13 @@ class CLITemplate(BaseModel):
     type: Literal["cli", "jinja"] = "jinja"
     variables: Optional[List[Variable]] = None
 
+    def __eq__(self, other):
+        """Add support for string equality"""
+        if isinstance(other, str):
+            return self.name == other
+        else:
+            return super().__eq__(other)
+
     @field_validator("provision", mode="before")
     def standardize_provision(cls, v):
         """Convert int to string"""
