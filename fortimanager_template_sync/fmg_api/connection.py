@@ -3,7 +3,9 @@ import logging
 from typing import Optional, List, Literal, Union
 
 from pyfortinet import FMG, FMGResponse
+from pyfortinet.exceptions import FMGEmptyResultException
 from pyfortinet.fmg_api.common import FILTER_TYPE
+from pyfortinet.fmg_api.dvmbd import Device
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +195,10 @@ class FMGSync(FMG):
             "url": url,
             "filter": filter_list,
         }
-        return self.get(request)
+        try:
+            return self.get(request)
+        except FMGEmptyResultException:
+            return FMGResponse(data={"data": []})
 
     def delete_cli_template_group(self, name: str) -> FMGResponse:
         """Delete CLI template"""
@@ -273,3 +278,32 @@ class FMGSync(FMG):
             "url": url,
         }
         return self.update(request)
+
+    def get_devices(self, filters: FILTER_TYPE = None):
+        """Get devices"""
+        if self._settings.adom == "global":
+            url = "/dvmdb/device"
+        else:
+            url = f"/dvmdb/adom/{self._settings.adom}/device"
+
+        request = {
+            "url": url,
+            "fields": ["name", "conf_status", "conn_status", "db_status", "dev_status"],
+            "loadsub": 1,  # gather vdoms
+        }
+        if filters:
+            request["filter"] = self._get_filter_list(filters)
+        return self.get(request)
+
+    def get_group_members(self, group_name: str):
+        """Get group members"""
+        if self._settings.adom == "global":
+            url = f"/dvmdb/group/{group_name}"
+        else:
+            url = f"/dvmdb/adom/{self._settings.adom}/group/{group_name}"
+
+        request = {
+            "option": "object member",
+            "url": url
+        }
+        return self.get(request)

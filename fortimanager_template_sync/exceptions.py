@@ -15,3 +15,7 @@ class FMGSyncConnectionException(FMGSyncException):
 
 class FMGSyncVariableException(FMGSyncException):
     """Error by variable definitions"""
+
+
+class FMGSyncInvalidStatusException(FMGSyncException):
+    """Unknown of invalid device status found"""

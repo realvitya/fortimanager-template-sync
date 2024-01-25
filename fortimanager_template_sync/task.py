@@ -2,14 +2,16 @@
 import logging
 import re
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from git import Repo, InvalidGitRepositoryError, GitCommandError
 from more_itertools import first
 from pydantic.dataclasses import dataclass
+from pyfortinet.fmg_api.common import F, FilterList
 
 from fortimanager_template_sync.config import FMGSyncSettings
-from fortimanager_template_sync.exceptions import FMGSyncVariableException
+from fortimanager_template_sync.exceptions import FMGSyncVariableException, FMGSyncInvalidStatusException
+from fortimanager_template_sync.fmg_api import FMGSync
 from fortimanager_template_sync.misc import find_all_vars
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable
 
@@ -23,6 +25,60 @@ class TemplateTree:
     pre_run_templates: List[CLITemplate]
     templates: List[CLITemplate]
     template_groups: List[CLITemplateGroup]
+
+
+DEV_STATUS = {
+    0: "none",
+    "none": "none",
+    1: "unknown",
+    "unknown": "unknown",
+    2: "checkedin",
+    "checkedin": "checkedin",
+    3: "inprogress",
+    "inprogress": "inprogress",
+    4: "installed",
+    "installed": "installed",
+    5: "aborted",
+    "aborted": "aborted",
+    6: "sched",
+    "sched": "sched",
+    7: "retry",
+    "retry": "retry",
+    8: "canceled",
+    "canceled": "canceled",
+    9: "pending",
+    "pending": "pending",
+    10: "retrieved",
+    "retrieved": "retrieved",
+    11: "changed_conf",
+    "changed_conf": "changed_conf",
+    12: "sync_fail",
+    "sync_fail": "sync_fail",
+    13: "timeout",
+    "timeout": "timeout",
+    14: "rev_revert",
+    "rev_revert": "rev_revert",
+    15: "auto_updated",
+    "auto_updated": "auto_updated",
+}
+
+DB_STATUS = {
+    0: "unknown",
+    "unknown": "unknown",
+    1: "nomod",
+    "nomod": "nomod",
+    2: "mod",
+    "mod": "mod",
+}
+
+CONF_STATUS = {
+    0: "unknown",
+    "unknown": "unknown",
+    1: "insync",
+    "insync": "insync",
+    2: "outofsync",
+    "outofsync": "outofsync",
+}
 
 
 class FMGSyncTask:
@@ -46,33 +102,52 @@ class FMGSyncTask:
         settings (FMGSyncSettings): task settings to use
     """
 
-    def __init__(self, settings: FMGSyncSettings):
+    def __init__(self, settings: FMGSyncSettings, fmg: Optional[FMGSync] = None):
         """Initialize task
 
         Args:
             settings: task settings
+            fmg: FMG connection if there is any
         """
         self.settings = settings
+        self.fmg = fmg
 
     def run(self):
         """Run task
 
         Raises:
             FMGSyncException
+
         """
         # 1. update local repository from remote
         repo = self._update_local_repository()
         # 2. load data from the repo
         repo_data = self._load_local_repository()
+        # Initialize FMG connection
         # 3. check FMG device status list in protected group
         #    If firewalls are not in sync, stop
+        success = False
+        try:
+            if not self.fmg:
+                self.fmg = FMGSync(
+                    base_url=self.settings.fmg_url,
+                    username=self.settings.fmg_user,
+                    password=self.settings.fmg_pass,
+                    adom=self.settings.fmg_adom,
+                    verify=self.settings.fmg_verify,
+                ).open()
+            self._ensure_device_statuses(self._get_firewall_statuses(self.settings.protected_fw_group))
         # 4. download FMG templates and template groups from FMG
+            fmg_data = self._load_fmg_templates()
         # 5. build list of templates to delete from FMG
         # 6. build list of templates to upload to FMG
         # 7. execute changes in FMG
         # 8. check firewall statuses
         # 9. deploy changes to firewalls in protected group only
         # 10. check firewall statuses again
+            success = True
+        finally:
+            self.fmg.close(discard_changes=not success)
 
     def _update_local_repository(self) -> Optional[Repo]:
         """Clone or update local repository
@@ -243,3 +318,64 @@ class FMGSyncTask:
         variables = FMGSyncTask._sanitize_variables(variables=variables)
 
         return CLITemplateGroup(name=name, description=description, member=members, variables=variables)
+
+    def _get_firewall_statuses(self, group: str) -> Dict[str, Dict[str, Any]]:
+        """Gather firewall statuses in the specified group"""
+        statuses = {}
+        device_list = self.fmg.get_group_members(group_name=group)
+        filters = FilterList()
+        for device in device_list.data.get("data", {}).get("object member"):
+            # statuses[device["name"]] = {"vdom": device["vdom"]}
+            filters += F(name=device["name"])
+        device_list = self.fmg.get_devices(filters=filters)
+        for device_status in device_list.data.get("data"):
+            statuses[device_status["name"]] = {
+                "conf_status": CONF_STATUS.get(device_status["conf_status"]),
+                "db_status": DB_STATUS.get(device_status["db_status"]),
+                "dev_status": DEV_STATUS.get(device_status["dev_status"]),
+            }
+            if any(value is None for value in statuses[device_status["name"]]):
+                raise FMGSyncInvalidStatusException(f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}")
+        return statuses
+
+    @staticmethod
+    def _ensure_device_statuses(statuses: Dict):
+        for device, status in statuses.items():
+            if status["conf_status"] not in ("insync",) or \
+               status["db_status"] not in ("nomod",):
+                raise FMGSyncInvalidStatusException(f"Device '{device}' has problem with status: {status}")
+
+    def _load_fmg_templates(self) -> TemplateTree:
+        """Load template data from FMG"""
+        all_templates = self.fmg.get_cli_templates()
+        pre_run_templates = [
+            CLITemplate(
+                name=template["name"],
+                description=template.get("description"),
+                provision="enable",
+                script=template["script"],
+                variables=[Variable(name=var) for var in template["variables"]]
+            )
+            for template in all_templates.data.get("data") if template.get("provision") == 1
+        ]
+        templates = [
+            CLITemplate(
+                name=template["name"],
+                description=template.get("description"),
+                provision="enable",
+                script=template["script"],
+                variables=[Variable(name=var) for var in template["variables"]]
+            )
+            for template in all_templates.data.get("data") if template.get("provision") == 0
+        ]
+        all_groups = self.fmg.get_cli_template_groups()
+        template_groups = [
+            CLITemplateGroup(
+                name=group["name"],
+                description=group.get("description"),
+                member=group.get("member"),
+                variables=[Variable(name=var) for var in group["variables"]]
+            )
+            for group in all_groups.data.get("data")
+        ]
+        return TemplateTree(templates=templates, pre_run_templates=pre_run_templates, template_groups=template_groups)

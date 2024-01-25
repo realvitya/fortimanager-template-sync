@@ -5,6 +5,7 @@ from pyfortinet.fmg_api.common import F
 
 from fortimanager_template_sync.fmg_api.connection import FMGSync
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup
+from fortimanager_template_sync.task import FMGSyncTask
 
 need_lab = pytest.mark.skipif(not pytest.lab_config, reason=f"Lab config {pytest.lab_config_file} does not exist!")
 
@@ -24,6 +25,7 @@ class TestFMGConnection:
         not fmg._token,
         reason=f"FMG {pytest.lab_config.fmg_url} is not connected!",
     )
+    task = FMGSyncTask(settings=pytest.lab_config, fmg=fmg)
 
     @fmg_connected
     def test_add_cli_template(self):
@@ -102,6 +104,16 @@ class TestFMGConnection:
     def test_delete_cli_template(self):
         response = self.fmg.delete_cli_template("test_template")
         assert response.success
+
+    @fmg_connected
+    def test_get_firewall_statuses(self):
+        statuses = self.task._get_firewall_statuses(group=pytest.lab_config.protected_fw_group)
+        assert statuses  # can't assert on data as this is run over a custom lab FMG
+
+    @fmg_connected
+    def test_load_fmg_templates(self):
+        templates = self.task._load_fmg_templates()
+        assert templates
 
     @fmg_connected
     def test_close_fmg(self):
