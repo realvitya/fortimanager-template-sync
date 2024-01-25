@@ -5,6 +5,7 @@ from pydantic import BaseModel, field_validator
 
 
 class Variable(BaseModel):
+    """Variable model"""
     name: str
     description: Optional[str] = None
     value: Optional[str] = None
@@ -18,6 +19,7 @@ class Variable(BaseModel):
 
 
 class CLITemplate(BaseModel):
+    """CLI template model"""
     name: str
     description: str = ""
     provision: Literal["disable", "enable"] = "disable"
@@ -50,6 +52,7 @@ class CLITemplate(BaseModel):
 
 
 class CLITemplateGroup(BaseModel):
+    """CLI Template Group model"""
     name: str
     description: str = ""
     member: Optional[List[str]] = None

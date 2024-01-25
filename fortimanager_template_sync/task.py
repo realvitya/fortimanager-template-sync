@@ -86,10 +86,10 @@ class FMGSyncTask:
     Fortimanager Sync Task
 
     Steps of this task:
+
     1. update local repository from remote
     2. check if there was a change
-    3. check FMG device status list in protected group
-       If firewalls are not in sync, stop
+    3. check FMG device status list in protected group. If firewalls are not in sync, stop
     4. download FMG templates and template groups from FMG
     5. build list of templates to delete from FMG
     6. build list of templates to upload to FMG
@@ -100,6 +100,7 @@ class FMGSyncTask:
 
     Attributes:
         settings (FMGSyncSettings): task settings to use
+        fmg (FMGSync): FMG instance
     """
 
     def __init__(self, settings: FMGSyncSettings, fmg: Optional[FMGSync] = None):
@@ -116,8 +117,8 @@ class FMGSyncTask:
         """Run task
 
         Raises:
-            FMGSyncException
-
+            FMGSyncVariableException: on invalid variable definitions or conflict
+            FMGSyncInvalidStatusException: on invalid device status
         """
         # 1. update local repository from remote
         repo = self._update_local_repository()

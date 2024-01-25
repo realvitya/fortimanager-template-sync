@@ -1,7 +1,9 @@
 /.env
 __pycache__
 .idea/
-/private/
+/private
 /dist
 .coverage
 .relint.yml
+# mkdocs folder
+/site

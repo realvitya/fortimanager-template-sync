@@ -1,0 +1,47 @@
+---
+site_name: Fortimanager Template Sync
+site_description: Supporting of Fortinet CLI template development and deployment
+site_author: Viktor Kertesz
+site_url: https://fortimanager-template-sync.github.io/
+
+repo_name: viktorkertesz/fortimanager-template-sync
+repo_url: https://github.com/viktorkertesz/fortimanager-template-sync
+
+theme:
+  name: material
+
+extra_css:
+  - extra.css
+
+nav:
+  - Home: index.md
+  - User Guide:
+      - Quick Start Guide: user_guide/quickstart.md
+      - Installation: user_guide/installation.md
+      - Repository Structure: user_guide/repository.md
+  - Developer Guide:
+      - Lab setup: developer_guide/lab_setup.md
+  - Code Reference: reference/
+
+plugins:
+- search
+- gen-files:
+    scripts:
+      - docs/gen_ref_pages.py
+- mkdocstrings:
+    handlers:
+      python:
+        paths: [ fortimanager_template_sync ]
+        options:
+          show_signature_annotations: true
+          signature_crossrefs: true
+          # add __init__ args to class and ignore __init__ summary text
+          merge_init_into_class: true
+          docstring_options:
+            ignore_init_summary: true
+
+- section-index
+- literate-nav
+
+watch:
+    - fortimanager_template_sync
