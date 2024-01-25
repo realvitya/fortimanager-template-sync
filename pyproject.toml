@@ -49,9 +49,6 @@ rich = [
 [tool.flit.module]
 name = "fortimanager_template_sync"
 
-#[project.entry-points."nornir.plugins.inventory"]
-#"SQLInventory" = "nornir_sql.plugins.inventory.sql:SQLInventory"
-
 [project.scripts]
 fmgsync = "fortimanager_template_sync.main:main"
 

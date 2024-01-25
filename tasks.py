@@ -54,11 +54,11 @@ LinterType = Literal[
     "end-of-file-fixer",
     "check-yaml",
     "check-toml",
-    "black",
+    # "black",
+    "ruff",
+    "ruff-format",
+    "pymarkdown",
     "detect-secrets",
-    "isort",
-    "rstcheck",
-    "pylint",
     "relint",
 ]
 
