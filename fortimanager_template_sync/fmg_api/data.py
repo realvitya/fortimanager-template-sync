@@ -60,6 +60,13 @@ class CLITemplateGroup(BaseModel):
     """CLI Template Group model"""
     name: str
     description: str = ""
-    member: Optional[List[str]] = None
+    member: Optional[List[str]] = None  # list of templates and template-groups (yes, their name is unique)
     variables: Optional[List[Variable]] = None
     scope_member: Optional[List[Dict[str, str]]] = None  # list of object this is assigned to
+
+    def __eq__(self, other):
+        """Add support for string equality"""
+        if isinstance(other, str):
+            return self.name == other
+        else:
+            return super().__eq__(other)

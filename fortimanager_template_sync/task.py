@@ -1,6 +1,7 @@
 """FMG Sync Task"""
 import logging
 import re
+from copy import copy
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
@@ -120,14 +121,20 @@ class FMGSyncTask:
             FMGSyncVariableException: on invalid variable definitions or conflict
             FMGSyncInvalidStatusException: on invalid device status
         """
+        success = False
         # 1. update local repository from remote
         repo = self._update_local_repository()
+        if not repo:
+            logger.error("Repository couldn't be updated!")
+            return success
         # 2. load data from the repo
         repo_data = self._load_local_repository()
+        if not repo_data:
+            logger.error("Repository couldn't be parsed!")
+            return success
         # Initialize FMG connection
         # 3. check FMG device status list in protected group
         #    If firewalls are not in sync, stop
-        success = False
         try:
             if not self.fmg:
                 self.fmg = FMGSync(
@@ -138,17 +145,22 @@ class FMGSyncTask:
                     verify=self.settings.fmg_verify,
                 ).open()
             self._ensure_device_statuses(self._get_firewall_statuses(self.settings.protected_fw_group))
-        # 4. download FMG templates and template groups from FMG
+            # 4. download FMG templates and template groups from FMG
             fmg_data = self._load_fmg_templates()
-        # 5. build list of templates to delete from FMG
-        # 6. build list of templates to upload to FMG
-        # 7. execute changes in FMG
-        # 8. check firewall statuses
-        # 9. deploy changes to firewalls in protected group only
-        # 10. check firewall statuses again
+            # 5. build list of templates to delete from FMG
+            to_delete = None
+            if self.settings.delete_unused_templates:
+                to_delete = self._find_unused_templates(repo_data, fmg_data)
+            # 6. build list of templates to upload to FMG
+            # 7. execute changes in FMG
+            # 8. check firewall statuses
+            # 9. deploy changes to firewalls in protected group only
+            # 10. check firewall statuses again
             success = True
         finally:
             self.fmg.close(discard_changes=not success)
+
+        return success
 
     def _update_local_repository(self) -> Optional[Repo]:
         """Clone or update local repository
@@ -292,7 +304,9 @@ class FMGSyncTask:
                 continue
             existing_var = first([var for var in good_variables if var.name == variable.name])
             if variable.value != existing_var.value:
-                raise FMGSyncVariableException(f"Variable {variable.name} has multiple default values amongst templates!")
+                raise FMGSyncVariableException(
+                    f"Variable {variable.name} has multiple default values amongst templates!"
+                )
 
         return good_variables
 
@@ -336,14 +350,15 @@ class FMGSyncTask:
                 "dev_status": DEV_STATUS.get(device_status["dev_status"]),
             }
             if any(value is None for value in statuses[device_status["name"]]):
-                raise FMGSyncInvalidStatusException(f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}")
+                raise FMGSyncInvalidStatusException(
+                    f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}"
+                )
         return statuses
 
     @staticmethod
     def _ensure_device_statuses(statuses: Dict):
         for device, status in statuses.items():
-            if status["conf_status"] not in ("insync",) or \
-               status["db_status"] not in ("nomod",):
+            if status["conf_status"] not in ("insync",) or status["db_status"] not in ("nomod",):
                 raise FMGSyncInvalidStatusException(f"Device '{device}' has problem with status: {status}")
 
     def _load_fmg_templates(self) -> TemplateTree:
@@ -355,9 +370,10 @@ class FMGSyncTask:
                 description=template.get("description"),
                 provision="enable",
                 script=template["script"],
-                variables=[Variable(name=var) for var in template["variables"]]
+                variables=[Variable(name=var) for var in template["variables"]],
             )
-            for template in all_templates.data.get("data") if template.get("provision") == 1
+            for template in all_templates.data.get("data")
+            if template.get("provision") == 1
         ]
         templates = [
             CLITemplate(
@@ -365,9 +381,10 @@ class FMGSyncTask:
                 description=template.get("description"),
                 provision="enable",
                 script=template["script"],
-                variables=[Variable(name=var) for var in template["variables"]]
+                variables=[Variable(name=var) for var in template["variables"]],
             )
-            for template in all_templates.data.get("data") if template.get("provision") == 0
+            for template in all_templates.data.get("data")
+            if template.get("provision") == 0
         ]
         all_groups = self.fmg.get_cli_template_groups()
         template_groups = [
@@ -375,8 +392,51 @@ class FMGSyncTask:
                 name=group["name"],
                 description=group.get("description"),
                 member=group.get("member"),
-                variables=[Variable(name=var) for var in group["variables"]]
+                variables=[Variable(name=var) for var in group["variables"]],
             )
             for group in all_groups.data.get("data")
         ]
         return TemplateTree(templates=templates, pre_run_templates=pre_run_templates, template_groups=template_groups)
+
+    @staticmethod
+    def _find_unused_templates(repo_tree: TemplateTree, fmg_tree: TemplateTree) -> TemplateTree:
+        """Find undefined or unused templates or groups in FMG
+
+        A template or template group is unused if:
+
+        1. is not assigned to any device or group
+        2. does not belong to any template-group
+        """
+        # pre-run templates cannot be part of any group
+        to_del_pre_run = [
+            template
+            for template in fmg_tree.pre_run_templates
+            if template.name not in repo_tree.pre_run_templates and not template.scope_member
+        ]
+        # find all template groups which may be deleted
+        to_del_groups = []
+        fmg_groups = copy(fmg_tree.template_groups)
+        while True:
+            groups = [
+                group
+                for group in fmg_groups
+                if group.name not in repo_tree.template_groups  # not in repo
+                and not group.scope_member  # not assigned
+                and not any(group.name in other.member for other in fmg_groups if other.member)  # not a member
+            ]
+            if groups:  # found to be deleted groups
+                to_del_groups.extend(groups)
+                fmg_groups = [group for group in fmg_groups if
+                              group not in groups]  # remove to be deleted groups from list
+                # go and check for more groups to be deleted
+            else:  # no more to be deleted groups found
+                break
+
+        to_del_templates = [
+            template
+            for template in fmg_tree.templates
+            if template.name not in repo_tree.templates
+            and not template.scope_member
+            and not any(template.name in group.member for group in fmg_groups if group.member)
+        ]
+        return TemplateTree(pre_run_templates=to_del_pre_run, templates=to_del_templates, template_groups=to_del_groups)

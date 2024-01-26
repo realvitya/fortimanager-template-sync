@@ -127,25 +127,15 @@ class TestGit:
             {% include "templates/template2.j2" %}
             """
         )
-        template1 = CLITemplate(
-            name="template1",
-            variables=[
-                Variable(name="var1"),
-                Variable(name="var2")
-            ]
-        )
-        template2 = CLITemplate(
-            name="template2",
-            variables=[
-                Variable(name="var3"),
-                Variable(name="var4")
-            ]
-        )
+        template1 = CLITemplate(name="template1", variables=[Variable(name="var1"), Variable(name="var2")])
+        template2 = CLITemplate(name="template2", variables=[Variable(name="var3"), Variable(name="var4")])
         templates = [template1, template2]
         template_group = self.task._parse_template_groups_data(name=name, data=data, templates=templates)
-        assert all([var in template_group.variables for var in ["var1", "var2", "var3", "var4"]]) and \
-               template_group.description == "Test template group" and \
-               template_group.member == ["template1", "template2"]
+        assert (
+            all([var in template_group.variables for var in ["var1", "var2", "var3", "var4"]])
+            and template_group.description == "Test template group"
+            and template_group.member == ["template1", "template2"]
+        )
 
     def test_load_local_repository(self):
         """Test load local repository"""

@@ -48,6 +48,7 @@ class FMGSyncSettings(BaseSettings):
     fmg_adom: str
     fmg_verify: bool = True
     protected_fw_group: str
+    delete_unused_templates: bool = False
     debug: int = 0
     logging_config: Optional[Union[str, dict]] = None
     prod_run: bool = False

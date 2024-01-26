@@ -10,8 +10,12 @@ from fortimanager_template_sync.config import FMGSyncSettings
 
 def pytest_addoption(parser):
     """Pytest options"""
-    parser.addoption("--lab_config", action="store", default="fmgsync.env", help="env file for lab setup (check online docs!)")
-    parser.addoption("--keep-lab", action="store_true", help="keep created objects and do not discard workspace changes")
+    parser.addoption(
+        "--lab_config", action="store", default="fmgsync.env", help="env file for lab setup (check online docs!)"
+    )
+    parser.addoption(
+        "--keep-lab", action="store_true", help="keep created objects and do not discard workspace changes"
+    )
 
 
 def pytest_configure(config):
