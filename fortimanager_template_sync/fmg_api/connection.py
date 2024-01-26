@@ -1,6 +1,6 @@
 """FMG connection"""
 import logging
-from typing import Optional, List, Literal, Union
+from typing import Optional, List, Literal, Union, Dict
 
 from pyfortinet import FMG, FMGResponse
 from pyfortinet.exceptions import FMGEmptyResultException
@@ -44,6 +44,60 @@ class FMGSync(FMG):
         }
         return self.add(request)
 
+    def assign_cli_template(self, template: str, target: Union[Dict[str, str], List[Dict[str, str]]]):
+        """Assign group or device to template
+
+        Examples:
+            target = {"name": "mygroup"}
+
+            target = {"name": "myfw", "vdom": "root"}
+
+            target = [ {"name": "group1"}, {"name": "group2"} ]
+
+        Args:
+            template: name of template
+            target: a single object or a list of objects to assign to the template
+        """
+        if not isinstance(target, list):
+            target = [target]
+
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/cli/template/{template}/scope member"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template/{template}/scope member"
+        request = {
+            "data": target,
+            "url": url
+        }
+        return self.add(request)
+
+    def assign_cli_template_group(self, template_group: str, target: Union[Dict[str, str], List[Dict[str, str]]]):
+        """Assign group or device to template group
+
+        Examples:
+            target = {"name": "mygroup"}
+
+            target = {"name": "myfw", "vdom": "root"}
+
+            target = [ {"name": "group1"}, {"name": "group2"} ]
+
+        Args:
+            template_group: name of template
+            target: a single object or a list of objects to assign to the template
+        """
+        if not isinstance(target, list):
+            target = [target]
+
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/cli/template-group/{template_group}/scope member"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group/{template_group}/scope member"
+        request = {
+            "data": target,
+            "url": url
+        }
+        return self.add(request)
+
     def update_cli_template(
         self,
         name: str,
@@ -84,6 +138,7 @@ class FMGSync(FMG):
             url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template/{name}"
         request = {
             "url": url,
+            "option": "scope member",
         }
         return self.get(request)
 
@@ -96,6 +151,7 @@ class FMGSync(FMG):
 
         request = {
             "url": url,
+            "option": "scope member",
         }
         if filters:
             request["filter"] = self._get_filter_list(filters)
@@ -176,25 +232,22 @@ class FMGSync(FMG):
             url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group/{name}"
         request = {
             "url": url,
+            "option": "scope member",
         }
         return self.get(request)
 
-    def get_cli_template_groups(
-        self,
-        name_like: str = "",
-    ) -> FMGResponse:
-        """Get CLI template groups based on 'like' filter"""
+    def get_cli_template_groups(self, filters: FILTER_TYPE = None) -> FMGResponse:
+        """Get CLI template groups"""
         if self._settings.adom == "global":
             url = "/pm/config/global/obj/cli/template-group"
         else:
             url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group"
-        filter_list = []
-        if name_like:
-            filter_list.append(["name", "like", name_like])
         request = {
             "url": url,
-            "filter": filter_list,
+            "option": "scope member",
         }
+        if filters:
+            request["filter"] = self._get_filter_list(filters)
         try:
             return self.get(request)
         except FMGEmptyResultException:

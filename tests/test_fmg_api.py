@@ -79,9 +79,17 @@ class TestFMGConnection:
         assert response.success
 
     @fmg_connected
+    def test_assign_cli_template_group(self):
+        target = {"name": self.task.settings.protected_fw_group}
+        # target = {"name": "testfw1", "vdom": "root"}
+        response = self.fmg.assign_cli_template_group(template_group="test_template_group", target=target)
+        assert response.success
+
+    @fmg_connected
     def test_get_cli_template_group(self):
         response = self.fmg.get_cli_template_group("test_template_group")
         assert response.success
+        assert {"name": self.task.settings.protected_fw_group} in response.data.get("data", {}).get("scope member")
 
     @fmg_connected
     def test_update_cli_template_group(self):

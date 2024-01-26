@@ -1,5 +1,5 @@
 """Pydantic data types"""
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Dict
 
 from pydantic import BaseModel, field_validator
 
@@ -19,13 +19,18 @@ class Variable(BaseModel):
 
 
 class CLITemplate(BaseModel):
-    """CLI template model"""
+    """CLI template model
+
+    Docs for assigning template to device
+    https://fndn.fortinet.net/index.php?/stackoverflow/topic/607-cli-template/&tab=comments#comment-2602
+    """
     name: str
     description: str = ""
     provision: Literal["disable", "enable"] = "disable"
     script: str = ""
     type: Literal["cli", "jinja"] = "jinja"
     variables: Optional[List[Variable]] = None
+    scope_member: Optional[List[Dict[str, str]]] = None  # list of object this is assigned to
 
     def __eq__(self, other):
         """Add support for string equality"""
@@ -57,3 +62,4 @@ class CLITemplateGroup(BaseModel):
     description: str = ""
     member: Optional[List[str]] = None
     variables: Optional[List[Variable]] = None
+    scope_member: Optional[List[Dict[str, str]]] = None  # list of object this is assigned to
