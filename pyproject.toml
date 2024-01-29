@@ -24,7 +24,9 @@ dependencies = [
     "typer",
     "pydantic-settings",
     "more-itertools",
-    "pyfortinet"
+    "pyfortinet",
+    "jinja2",
+    "ruamel.yaml",
 ]
 
 [project.optional-dependencies]
@@ -37,9 +39,7 @@ dev = [
     "invoke",
     "ruff",
     "pre-commit",
-    "ruamel.yaml",
     "mypy",
-    "jinja2",
 ]
 
 rich = [

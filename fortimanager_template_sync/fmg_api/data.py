@@ -6,6 +6,7 @@ from pydantic import BaseModel, field_validator
 
 class Variable(BaseModel):
     """Variable model"""
+
     name: str
     description: Optional[str] = None
     value: Optional[str] = None
@@ -24,6 +25,7 @@ class CLITemplate(BaseModel):
     Docs for assigning template to device
     https://fndn.fortinet.net/index.php?/stackoverflow/topic/607-cli-template/&tab=comments#comment-2602
     """
+
     name: str
     description: str = ""
     provision: Literal["disable", "enable"] = "disable"
@@ -58,6 +60,7 @@ class CLITemplate(BaseModel):
 
 class CLITemplateGroup(BaseModel):
     """CLI Template Group model"""
+
     name: str
     description: str = ""
     member: Optional[List[str]] = None  # list of templates and template-groups (yes, their name is unique)

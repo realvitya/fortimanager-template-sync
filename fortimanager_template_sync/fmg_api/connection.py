@@ -65,10 +65,7 @@ class FMGSync(FMG):
             url = f"/pm/config/global/obj/cli/template/{template}/scope member"
         else:
             url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template/{template}/scope member"
-        request = {
-            "data": target,
-            "url": url
-        }
+        request = {"data": target, "url": url}
         return self.add(request)
 
     def assign_cli_template_group(self, template_group: str, target: Union[Dict[str, str], List[Dict[str, str]]]):
@@ -92,10 +89,7 @@ class FMGSync(FMG):
             url = f"/pm/config/global/obj/cli/template-group/{template_group}/scope member"
         else:
             url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group/{template_group}/scope member"
-        request = {
-            "data": target,
-            "url": url
-        }
+        request = {"data": target, "url": url}
         return self.add(request)
 
     def update_cli_template(
@@ -264,7 +258,9 @@ class FMGSync(FMG):
         }
         return self.delete(request)
 
-    def add_fmg_variable(self, name: str, value: Optional[str] = None, description: Optional[str] = None) -> FMGResponse:
+    def add_fmg_variable(
+        self, name: str, value: Optional[str] = None, description: Optional[str] = None
+    ) -> FMGResponse:
         """Add metadata variable to use in CLI templates
 
         Args:
@@ -310,7 +306,9 @@ class FMGSync(FMG):
             request["filter"] = self._get_filter_list(filters)
         return self.get(request)
 
-    def update_fmg_variable(self, name: str, value: Optional[str] = None, description: Optional[str] = None) -> FMGResponse:
+    def update_fmg_variable(
+        self, name: str, value: Optional[str] = None, description: Optional[str] = None
+    ) -> FMGResponse:
         """Update metadata variable to use in CLI templates
 
         Args:
@@ -355,8 +353,5 @@ class FMGSync(FMG):
         else:
             url = f"/dvmdb/adom/{self._settings.adom}/group/{group_name}"
 
-        request = {
-            "option": "object member",
-            "url": url
-        }
+        request = {"option": "object member", "url": url}
         return self.get(request)
