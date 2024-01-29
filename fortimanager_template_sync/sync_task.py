@@ -2,9 +2,11 @@
 import logging
 import re
 from copy import copy
+import time
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Annotated
 
+import typer
 from git import Repo, InvalidGitRepositoryError, GitCommandError
 from more_itertools import first
 from pydantic.dataclasses import dataclass
@@ -16,7 +18,7 @@ from fortimanager_template_sync.fmg_api import FMGSync
 from fortimanager_template_sync.misc import find_all_vars
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable
 
-logger = logging.getLogger("fortimanager_template_sync.task")
+logger = logging.getLogger("fortimanager_template_sync.sync_task")
 
 
 @dataclass
@@ -95,9 +97,6 @@ class FMGSyncTask:
     5. build list of templates to delete from FMG
     6. build list of templates to upload to FMG
     7. execute changes in FMG
-    8. check firewall statuses
-    9. deploy changes to firewalls in protected group only
-    10. check firewall statuses again
 
     Attributes:
         settings (FMGSyncSettings): task settings to use
@@ -151,6 +150,7 @@ class FMGSyncTask:
             to_delete = None
             if self.settings.delete_unused_templates:
                 to_delete = self._find_unused_templates(repo_data, fmg_data)
+
             # 6. build list of templates to upload to FMG
             # 7. execute changes in FMG
             # 8. check firewall statuses
@@ -208,9 +208,11 @@ class FMGSyncTask:
 
     def _load_local_repository(self) -> TemplateTree:
         """Load files from repository"""
+        logger.info("Load files from repository")
         template_path = Path(self.settings.local_repo) / "templates"
         templates = []
         if template_path.is_dir():
+            logger.debug("Loading templates from %s", template_path)
             for template_file in template_path.glob("*.j2"):
                 with open(template_file) as fi:
                     data = fi.read()
@@ -220,6 +222,7 @@ class FMGSyncTask:
         pre_run_templates = []
         template_path = Path(self.settings.local_repo) / "pre-run"
         if template_path.is_dir():
+            logger.debug("Loading pre-run templates from %s", template_path)
             for template_file in template_path.glob("*.j2"):
                 with open(template_file) as fi:
                     data = fi.read()
@@ -230,6 +233,7 @@ class FMGSyncTask:
         template_groups = []
         template_path = Path(self.settings.local_repo) / "template-groups"
         if template_path.is_dir():
+            logger.debug("Loading template groups from %s", template_path)
             for template_group_file in template_path.glob("*.j2"):
                 with open(template_group_file) as fi:
                     data = fi.read()
@@ -251,6 +255,7 @@ class FMGSyncTask:
             name (str): name of the template (file name without extension)
             data (str): raw text of the script file
         """
+        logger.debug("Parsing %s template", name)
         description = ""
         variables = []
         # gather metadata
@@ -304,9 +309,9 @@ class FMGSyncTask:
                 continue
             existing_var = first([var for var in good_variables if var.name == variable.name])
             if variable.value != existing_var.value:
-                raise FMGSyncVariableException(
-                    f"Variable {variable.name} has multiple default values amongst templates!"
-                )
+                error = f"Variable {variable.name} has multiple default values amongst templates!"
+                logger.error(error)
+                raise FMGSyncVariableException(error)
 
         return good_variables
 
@@ -315,6 +320,7 @@ class FMGSyncTask:
         name: str, data: str, templates: Optional[List[CLITemplate]] = None
     ) -> CLITemplateGroup:
         """Parse template group file"""
+        logger.debug("Parsing %s group", name)
         description = None
         members = []
         variables = []
@@ -336,33 +342,44 @@ class FMGSyncTask:
 
     def _get_firewall_statuses(self, group: str) -> Dict[str, Dict[str, Any]]:
         """Gather firewall statuses in the specified group"""
+        logger.info("Gathering firewall statuses in group %s", group)
         statuses = {}
         device_list = self.fmg.get_group_members(group_name=group)
         filters = FilterList()
         for device in device_list.data.get("data", {}).get("object member"):
-            # statuses[device["name"]] = {"vdom": device["vdom"]}
             filters += F(name=device["name"])
         device_list = self.fmg.get_devices(filters=filters)
         for device_status in device_list.data.get("data"):
+            logger.debug(
+                "Device %s: dev_status: %s, conf_status: %s, db_status: %s",
+                device_status["name"],
+                DEV_STATUS.get(device_status["dev_status"]),
+                CONF_STATUS.get(device_status["conf_status"]),
+                DB_STATUS.get(device_status["db_status"]),
+            )
+
             statuses[device_status["name"]] = {
                 "conf_status": CONF_STATUS.get(device_status["conf_status"]),
                 "db_status": DB_STATUS.get(device_status["db_status"]),
                 "dev_status": DEV_STATUS.get(device_status["dev_status"]),
             }
-            if any(value is None for value in statuses[device_status["name"]]):
-                raise FMGSyncInvalidStatusException(
-                    f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}"
-                )
+            if any(value is None for value in statuses[device_status["name"]].values()):
+                error = f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}"
+                logger.error(error)
+                raise FMGSyncInvalidStatusException(error)
         return statuses
 
     @staticmethod
     def _ensure_device_statuses(statuses: Dict):
         for device, status in statuses.items():
             if status["conf_status"] not in ("insync",) or status["db_status"] not in ("nomod",):
-                raise FMGSyncInvalidStatusException(f"Device '{device}' has problem with status: {status}")
+                error = f"Device '{device}' has problem with status: {status}"
+                logger.error(error)
+                raise FMGSyncInvalidStatusException(error)
 
     def _load_fmg_templates(self) -> TemplateTree:
         """Load template data from FMG"""
+        logger.info("Loading templates from FMG")
         all_templates = self.fmg.get_cli_templates()
         pre_run_templates = [
             CLITemplate(
@@ -375,6 +392,7 @@ class FMGSyncTask:
             for template in all_templates.data.get("data")
             if template.get("provision") == 1
         ]
+        logger.debug("%d number of pre-run templates loaded", len(pre_run_templates))
         templates = [
             CLITemplate(
                 name=template["name"],
@@ -386,6 +404,7 @@ class FMGSyncTask:
             for template in all_templates.data.get("data")
             if template.get("provision") == 0
         ]
+        logger.debug("%d number of templates loaded", len(templates))
         all_groups = self.fmg.get_cli_template_groups()
         template_groups = [
             CLITemplateGroup(
@@ -396,6 +415,7 @@ class FMGSyncTask:
             )
             for group in all_groups.data.get("data")
         ]
+        logger.debug("%d number of pre-run templates loaded", len(template_groups))
         return TemplateTree(templates=templates, pre_run_templates=pre_run_templates, template_groups=template_groups)
 
     @staticmethod
@@ -426,8 +446,9 @@ class FMGSyncTask:
             ]
             if groups:  # found to be deleted groups
                 to_del_groups.extend(groups)
-                fmg_groups = [group for group in fmg_groups if
-                              group not in groups]  # remove to be deleted groups from list
+                fmg_groups = [
+                    group for group in fmg_groups if group not in groups
+                ]  # remove to be deleted groups from list
                 # go and check for more groups to be deleted
             else:  # no more to be deleted groups found
                 break
@@ -440,3 +461,53 @@ class FMGSyncTask:
             and not any(template.name in group.member for group in fmg_groups if group.member)
         ]
         return TemplateTree(pre_run_templates=to_del_pre_run, templates=to_del_templates, template_groups=to_del_groups)
+
+
+def sync_run(
+    template_repo: Annotated[
+        str, typer.Option("--template-repo", "-t", envvar="FMGSYNC_TEMPLATE_REPO", help="Template repository URL")
+    ] = None,
+    template_branch: Annotated[
+        str,
+        typer.Option("--template-branch", "-b", envvar="FMGSYNC_TEMPLATE_BRANCH", help="Branch in repository to sync"),
+    ] = "main",
+    git_token: Annotated[str, typer.Option("--git-token", envvar="FMGSYNC_GIT_TOKEN")] = None,
+    local_repo: Annotated[Path, typer.Option("--local-path", "-l", envvar="FMGSYNC_LOCAL_PATH")] = "./fmg-templates/",
+    fmg_url: Annotated[str, typer.Option("--fmg-url", "-url", envvar="FMGSYNC_FMG_URL")] = None,
+    fmg_user: Annotated[str, typer.Option("--fmg-user", "-u", envvar="FMGSYNC_FMG_USER")] = None,
+    fmg_pass: Annotated[str, typer.Option("--fmg-pass", "-p", envvar="FMGSYNC_FMG_PASS")] = None,
+    fmg_adom: Annotated[str, typer.Option("--fmg-adom", "-a", envvar="FMGSYNC_FMG_ADOM")] = "root",
+    fmg_verify: Annotated[bool, typer.Option("--fmg-verify", "-vf", envvar="FMGSYNC_FMG_VERIFY")] = True,
+    protected_fw_group: Annotated[
+        str,
+        typer.Option(
+            "--protected-firewall-group",
+            "-pg",
+            envvar="FMGSYNC_PROTECTED_FW_GROUP",
+            help="This group in FMG will be checked for FW status. Also this group will be deployed only",
+        ),
+    ] = "production",
+    delete_unused_templates: Annotated[bool, typer.Option("--delete-unused-templates", "-d")] = False,
+    prod_run: Annotated[bool, typer.Option("--force-changes", "-f", help="do changes")] = False,
+):
+    """GIT/FMG sync operation"""
+
+    settings = FMGSyncSettings(
+        template_repo=template_repo,
+        template_branch=template_branch,
+        git_token=git_token,
+        local_repo=local_repo,
+        fmg_url=fmg_url,
+        fmg_user=fmg_user,
+        fmg_pass=fmg_pass,
+        fmg_adom=fmg_adom,
+        fmg_verify=fmg_verify,
+        protected_fw_group=protected_fw_group,
+        delete_unused_templates=delete_unused_templates,
+        prod_run=prod_run,
+    )
+
+    start_time = time.time()
+    job = FMGSyncTask(settings)
+    job.run()
+    logger.info("Operation took %ss", round(time.time() - start_time, 2))

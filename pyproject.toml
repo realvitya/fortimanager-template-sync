@@ -50,7 +50,7 @@ rich = [
 name = "fortimanager_template_sync"
 
 [project.scripts]
-fmgsync = "fortimanager_template_sync.main:main"
+fmgsync = "fortimanager_template_sync.main:app"
 
 [project.urls]
 Source = "https://github.com/viktorkertesz/fortimanager-template-sync"

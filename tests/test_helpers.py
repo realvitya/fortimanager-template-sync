@@ -3,7 +3,7 @@ import pytest
 
 from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup
-from fortimanager_template_sync.task import FMGSyncTask, TemplateTree
+from fortimanager_template_sync.sync_task import FMGSyncTask, TemplateTree
 
 
 class TestHelpers:
@@ -62,10 +62,31 @@ class TestHelpers:
         )
         to_delete_tree = FMGSyncTask._find_unused_templates(repo_tree=repo_tree, fmg_tree=fmg_tree)
         # check that only valid object would be deleted
-        assert all([template in to_delete_tree.pre_run_templates for template in ["to_delete_pre_run", ]])
+        assert all(
+            [
+                template in to_delete_tree.pre_run_templates
+                for template in [
+                    "to_delete_pre_run",
+                ]
+            ]
+        )
 
-        assert all([template in to_delete_tree.templates for template in ["t_in_deleted_template_group",
-                                                                          "to_delete_template", ]])
+        assert all(
+            [
+                template in to_delete_tree.templates
+                for template in [
+                    "t_in_deleted_template_group",
+                    "to_delete_template",
+                ]
+            ]
+        )
 
-        assert all([group in to_delete_tree.template_groups for group in ["to_delete_group",
-                                                                          "g_in_deleted_template_group", ]])
+        assert all(
+            [
+                group in to_delete_tree.template_groups
+                for group in [
+                    "to_delete_group",
+                    "g_in_deleted_template_group",
+                ]
+            ]
+        )

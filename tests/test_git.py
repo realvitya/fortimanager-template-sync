@@ -11,7 +11,7 @@ from git import Repo
 
 from fortimanager_template_sync.exceptions import FMGSyncVariableException
 from fortimanager_template_sync.fmg_api.data import Variable, CLITemplate
-from fortimanager_template_sync.task import FMGSyncTask
+from fortimanager_template_sync.sync_task import FMGSyncTask
 
 need_lab = pytest.mark.skipif(not pytest.lab_config, reason=f"Lab config {pytest.lab_config_file} does not exist!")
 use_remote_git = pytest.mark.skipif(not pytest.lab_config.git_token, reason=f"Not remote git token specified!")
@@ -72,7 +72,7 @@ class TestGit:
             2. clears DHCP server configuration
             3. setup mgmt interface
             4. adds default route for mgmt interface
-    
+
             Used vars:
             mgmt_interface  : Management interface name (default: mgmt)
             mgmt_ip         : mgmt interface ip/nm (e.g. 1.1.1.1/24)
@@ -123,7 +123,7 @@ class TestGit:
             -#}
             {# j2lint: disable=jinja-statements-delimiter #}
             {% include "templates/template1.j2" %}
-            
+
             {% include "templates/template2.j2" %}
             """
         )
