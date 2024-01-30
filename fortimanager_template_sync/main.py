@@ -9,8 +9,8 @@ from typing_extensions import Annotated
 
 from fortimanager_template_sync import __version__
 from fortimanager_template_sync.misc import get_logging_config
-from fortimanager_template_sync.sync_task import sync_run
-from fortimanager_template_sync.deploy_task import deploy_run
+from fortimanager_template_sync.sync_run import sync_run
+from fortimanager_template_sync.deploy_run import deploy_run
 
 app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, add_completion=False, no_args_is_help=True)
 app.command(name="sync", help="GIT/FMG sync operation")(sync_run)
@@ -28,6 +28,7 @@ def main(
     debug: Annotated[int, typer.Option("--debug", "-D", help="debug logs", count=True)] = 0,
 ):
     """Fortimanager Template Sync"""
+    # This function runs before each task (sync/deploy)
     if version:
         print(f"Fortimanager Template Sync version: {__version__}")
         return
@@ -38,6 +39,9 @@ def main(
         logging.getLogger("fortimanager_template_sync").setLevel(logging.DEBUG)
     if debug > 1:
         logging.level = logging.DEBUG
+
+    # load environment variables for tests
+    # in production this should not have an effect as variables must be provided by the OS
     dotenv.load_dotenv("fmgsync.env")
 
 
