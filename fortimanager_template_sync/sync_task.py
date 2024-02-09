@@ -7,25 +7,16 @@ from typing import Optional, List, Dict, Any
 
 from git import Repo, InvalidGitRepositoryError, GitCommandError
 from more_itertools import first
-from pydantic.dataclasses import dataclass
 from pyfortinet.fmg_api.common import F, FilterList
 
 from fortimanager_template_sync.config import FMGSyncSettings
-from fortimanager_template_sync.exceptions import FMGSyncVariableException, FMGSyncInvalidStatusException
+from fortimanager_template_sync.exceptions import FMGSyncVariableException, FMGSyncInvalidStatusException, \
+    FMGSyncDeleteError
 from fortimanager_template_sync.fmg_api import FMGSync
 from fortimanager_template_sync.misc import find_all_vars
-from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable
+from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable, TemplateTree
 
 logger = logging.getLogger("fortimanager_template_sync.sync_task")
-
-
-@dataclass
-class TemplateTree:
-    """Template data structure"""
-
-    pre_run_templates: List[CLITemplate]
-    templates: List[CLITemplate]
-    template_groups: List[CLITemplateGroup]
 
 
 DEV_STATUS = {
@@ -145,11 +136,13 @@ class FMGSyncTask:
             # 4. download FMG templates and template groups from FMG
             fmg_data = self._load_fmg_templates()
             # 5. build list of templates to delete from FMG
-            to_delete = None
             if self.settings.delete_unused_templates:
                 to_delete = self._find_unused_templates(repo_data, fmg_data)
-
+                self._delete_templates(to_delete)
             # 6. build list of templates to upload to FMG
+            to_upload = self._changed_templates(repo_data, fmg_data)
+            if to_upload:
+                self._update_fmg_templates(to_upload)
             # 7. execute changes in FMG
             # 8. check firewall statuses
             # 9. deploy changes to firewalls in protected group only
@@ -459,3 +452,73 @@ class FMGSyncTask:
             and not any(template.name in group.member for group in fmg_groups if group.member)
         ]
         return TemplateTree(pre_run_templates=to_del_pre_run, templates=to_del_templates, template_groups=to_del_groups)
+
+    def _delete_templates(self, templates: TemplateTree):
+        """Delete templates and template groups
+
+        Args:
+            templates (TemplateTree): template tree object containing CLI templates/groups to delete
+        """
+        logger.info("Deleting unused templates and template-groups")
+        for template_group in templates.template_groups:
+            response = self.fmg.delete_cli_template_group(template_group.name)
+            if not response.success:
+                error = f"Error deleting {template_group.name} template group: {response.data}"
+                logger.warning(error)
+                raise FMGSyncDeleteError(error)
+        for template in templates.pre_run_templates:
+            response = self.fmg.delete_cli_template(template.name)
+            if not response.success:
+                error = f"Error deleting {template.name} template: {response.data}"
+                logger.warning(error)
+                raise FMGSyncDeleteError(error)
+        for template in templates.templates:
+            response = self.fmg.delete_cli_template(template.name)
+            if not response.success:
+                error = f"Error deleting {template.name} template: {response.data}"
+                logger.warning(error)
+                raise FMGSyncDeleteError(error)
+
+    @staticmethod
+    def _changed_templates(repo_data: TemplateTree, fmg_data: TemplateTree) -> TemplateTree:
+        """Determine to be updated templates and template groups"""
+        # check pre-run templates first
+        update_pre_run_templates = []
+        for template in repo_data.pre_run_templates:
+            # search for existing template
+            fmg_template = first((templ for templ in fmg_data.pre_run_templates if template.name == templ.name),
+                                 default=None)
+            # if template need to be updated, add it to the list
+            if fmg_template != template:
+                update_pre_run_templates.append(template)
+        # check templates
+        update_templates = []
+        for template in repo_data.templates:
+            # search for existing template
+            fmg_template = first((templ for templ in fmg_data.templates if template.name == templ.name),
+                                 default=None)
+            # if template need to be updated, add it to the list
+            if fmg_template != template:
+                update_templates.append(template)
+        # check template groups
+        update_template_groups = []
+        for group in repo_data.template_groups:
+            # search for existing template
+            fmg_group = first((grp for grp in fmg_data.template_groups if group.name == grp.name),
+                              default=None)
+            # if template group need to be updated, add it to the list
+            if fmg_group != group:
+                update_template_groups.append(group)
+        return TemplateTree(
+            templates=update_templates,
+            pre_run_templates=update_pre_run_templates,
+            template_groups=update_template_groups
+        )
+
+    def _update_fmg_templates(self, templates: TemplateTree):
+        """Update templates and template groups"""
+        # need to update variables first
+
+        logger.info("Updating templates")
+        for template in templates.pre_run_templates:
+            self.fmg.set_cli_template()

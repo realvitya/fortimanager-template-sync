@@ -26,7 +26,7 @@ def deploy_run(
     fmg_user: Annotated[str, typer.Option("--fmg-user", "-u", envvar="FMGSYNC_FMG_USER")] = None,
     fmg_pass: Annotated[str, typer.Option("--fmg-pass", "-p", envvar="FMGSYNC_FMG_PASS")] = None,
     fmg_adom: Annotated[str, typer.Option("--fmg-adom", "-a", envvar="FMGSYNC_FMG_ADOM")] = "root",
-    fmg_verify: Annotated[bool, typer.Option("--fmg-verify", "-vf", envvar="FMGSYNC_FMG_VERIFY")] = True,
+    fmg_verify: Annotated[bool, typer.Option(envvar="FMGSYNC_FMG_VERIFY")] = True,
     protected_fw_group: Annotated[
         str,
         typer.Option(

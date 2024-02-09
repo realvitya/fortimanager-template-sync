@@ -124,6 +124,38 @@ class FMGSync(FMG):
         }
         return self.update(request)
 
+    def set_cli_template(
+        self,
+        name: str,
+        script: str,
+        new_name: str = "",
+        description: str = "",
+        provision: Literal["disable", "enable"] = "disable",
+        type: Literal["cli", "jinja"] = "jinja",
+        variables: Optional[List[str]] = None,
+    ) -> FMGResponse:
+        """Update a CLI template"""
+        if not variables:
+            variables = []
+        if self._settings.adom == "global":
+            url = f"/pm/config/global/obj/cli/template/{name}"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template/{name}"
+        if new_name:
+            name = new_name
+        request = {
+            "data": {
+                "description": description,
+                "name": name,
+                "provision": provision,
+                "script": script,
+                "type": type,
+                "variables": variables,
+            },
+            "url": url,
+        }
+        return self.set(request)
+
     def get_cli_template(self, name: str) -> FMGResponse:
         """Get a specific CLI template"""
         if self._settings.adom == "global":

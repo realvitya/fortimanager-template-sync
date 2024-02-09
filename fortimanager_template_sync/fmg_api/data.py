@@ -2,6 +2,7 @@
 from typing import List, Literal, Optional, Dict
 
 from pydantic import BaseModel, field_validator
+from pydantic.dataclasses import dataclass
 
 
 class Variable(BaseModel):
@@ -73,3 +74,26 @@ class CLITemplateGroup(BaseModel):
             return self.name == other
         else:
             return super().__eq__(other)
+
+
+@dataclass
+class TemplateTree:
+    """Template data structure
+
+    Attributes:
+        pre_run_templates
+        templates
+        template_groups
+    """
+
+    pre_run_templates: List[CLITemplate]
+    templates: List[CLITemplate]
+    template_groups: List[CLITemplateGroup]
+
+    def __bool__(self):
+        """Check for empty tree
+
+        Returns:
+            True if there is any template or template group in the tree
+        """
+        return bool(len(self.pre_run_templates) + len(self.templates) + len(self.template_groups))

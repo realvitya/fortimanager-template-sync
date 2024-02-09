@@ -19,3 +19,7 @@ class FMGSyncVariableException(FMGSyncException):
 
 class FMGSyncInvalidStatusException(FMGSyncException):
     """Unknown of invalid device status found"""
+
+
+class FMGSyncDeleteError(FMGSyncException):
+    """Error by deleting object"""
