@@ -1,8 +1,9 @@
 """Test helper functions/methods"""
 import pytest
 
-from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException
-from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup
+from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException, FMGSyncVariableException
+from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable
+from fortimanager_template_sync.misc import sanitize_variables
 from fortimanager_template_sync.sync_task import FMGSyncTask, TemplateTree
 
 
@@ -90,3 +91,32 @@ class TestHelpers:
                 ]
             ]
         )
+
+    def test_sanitize_good_vars(self):
+        """Test sanitize_variables with same default values"""
+        variables = [
+            Variable(name="var1"),
+            Variable(name="var2"),
+            Variable(name="var3"),
+            Variable(name="var1", description="Ignored description"),
+        ]
+        assert len(sanitize_variables(variables)) == 3
+
+    def test_sanitize_conflicting_vars(self):
+        """Test sanitize_variables with different default values"""
+        variables = [
+            Variable(name="var1", value="1"),
+            Variable(name="var2"),
+            Variable(name="var3"),
+            Variable(name="var1", value="2", description="Ignored description"),
+        ]
+        with pytest.raises(FMGSyncVariableException):
+            sanitize_variables(variables)
+
+    def test_template_tree_variables(self):
+        tree = TemplateTree(
+            template_groups=[CLITemplateGroup(name="group1", variables=[Variable(name="var1")])],
+            pre_run_templates=[CLITemplate(name="pre-run-template1", variables=[Variable(name="var2")])],
+            templates=[CLITemplate(name="template1", variables=[Variable(name="var2")])]
+        )
+        assert all([var in tree.variables for var in [Variable(name="var1"), Variable(name="var2")]])

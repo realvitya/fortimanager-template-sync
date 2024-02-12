@@ -4,6 +4,8 @@ from typing import List, Literal, Optional, Dict
 from pydantic import BaseModel, field_validator
 from pydantic.dataclasses import dataclass
 
+from fortimanager_template_sync.misc import sanitize_variables
+
 
 class Variable(BaseModel):
     """Variable model"""
@@ -97,3 +99,17 @@ class TemplateTree:
             True if there is any template or template group in the tree
         """
         return bool(len(self.pre_run_templates) + len(self.templates) + len(self.template_groups))
+
+    @property
+    def variables(self) -> Optional[List[Variable]]:
+        """Get list of all variables"""
+        variables = [
+            template.variables
+            for template in self.pre_run_templates + self.templates + self.template_groups
+            if template.variables
+        ]
+        result = []
+        for variable_list in variables:
+            result.extend(variable_list)
+        result = sanitize_variables(result)
+        return result if result else None

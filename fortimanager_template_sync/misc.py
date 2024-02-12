@@ -1,8 +1,18 @@
 """Miscellaneous utilities."""
+import logging
 from pathlib import Path
+from typing import List, TYPE_CHECKING
 
 from jinja2 import Environment, meta
+from more_itertools import first
 from ruamel.yaml import YAML
+
+from fortimanager_template_sync.exceptions import FMGSyncVariableException
+
+if TYPE_CHECKING:
+    from fortimanager_template_sync.fmg_api.data import Variable
+
+logger = logging.getLogger(__name__)
 
 yaml = YAML(typ="safe", pure=True)
 DEFAULT_LOGGING = yaml.load(
@@ -56,3 +66,29 @@ def find_all_vars(template_content: str) -> set:
     parsed_content = env.parse(template_content)
 
     return meta.find_undeclared_variables(parsed_content)
+
+
+def sanitize_variables(variables: List["Variable"]) -> List["Variable"]:
+    """De-dup and check variables, so they are uniq in name and default value
+
+    Args:
+        variables: input list of variables
+
+    Returns:
+        list of variables
+
+    Raises:
+        FMGSyncVariableException on variable definitions
+    """
+    good_variables = []
+    for variable in variables:
+        if variable.name not in good_variables:
+            good_variables.append(variable)
+            continue
+        existing_var = first([var for var in good_variables if var.name == variable.name])
+        if variable.value != existing_var.value:
+            error = f"Variable {variable.name} has multiple default values amongst templates!"
+            logger.error(error)
+            raise FMGSyncVariableException(error)
+
+    return good_variables

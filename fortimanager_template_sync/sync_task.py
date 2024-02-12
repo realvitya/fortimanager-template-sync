@@ -10,10 +10,9 @@ from more_itertools import first
 from pyfortinet.fmg_api.common import F, FilterList
 
 from fortimanager_template_sync.config import FMGSyncSettings
-from fortimanager_template_sync.exceptions import FMGSyncVariableException, FMGSyncInvalidStatusException, \
-    FMGSyncDeleteError
+from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException, FMGSyncDeleteError
 from fortimanager_template_sync.fmg_api import FMGSync
-from fortimanager_template_sync.misc import find_all_vars
+from fortimanager_template_sync.misc import find_all_vars, sanitize_variables
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable, TemplateTree
 
 logger = logging.getLogger("fortimanager_template_sync.sync_task")
@@ -281,32 +280,6 @@ class FMGSyncTask:
         return CLITemplate(name=name, description=description, variables=variables, script=data)
 
     @staticmethod
-    def _sanitize_variables(variables: List[Variable]) -> List[Variable]:
-        """De-dup and check variables, so they are uniq in name and default value
-
-        Args:
-            variables: input list of variables
-
-        Returns:
-            list of variables
-
-        Raises:
-            FMGSyncVariableException on variable definitions
-        """
-        good_variables = []
-        for variable in variables:
-            if variable.name not in good_variables:
-                good_variables.append(variable)
-                continue
-            existing_var = first([var for var in good_variables if var.name == variable.name])
-            if variable.value != existing_var.value:
-                error = f"Variable {variable.name} has multiple default values amongst templates!"
-                logger.error(error)
-                raise FMGSyncVariableException(error)
-
-        return good_variables
-
-    @staticmethod
     def _parse_template_groups_data(
         name: str, data: str, templates: Optional[List[CLITemplate]] = None
     ) -> CLITemplateGroup:
@@ -327,7 +300,7 @@ class FMGSyncTask:
         for template in templates:
             variables.extend(template.variables)  # flat out lists
         # deduplicate and sanity check on variables
-        variables = FMGSyncTask._sanitize_variables(variables=variables)
+        variables = sanitize_variables(variables=variables)
 
         return CLITemplateGroup(name=name, description=description, member=members, variables=variables)
 
@@ -461,23 +434,23 @@ class FMGSyncTask:
         """
         logger.info("Deleting unused templates and template-groups")
         for template_group in templates.template_groups:
-            response = self.fmg.delete_cli_template_group(template_group.name)
-            if not response.success:
-                error = f"Error deleting {template_group.name} template group: {response.data}"
-                logger.warning(error)
-                raise FMGSyncDeleteError(error)
-        for template in templates.pre_run_templates:
-            response = self.fmg.delete_cli_template(template.name)
-            if not response.success:
-                error = f"Error deleting {template.name} template: {response.data}"
-                logger.warning(error)
-                raise FMGSyncDeleteError(error)
-        for template in templates.templates:
-            response = self.fmg.delete_cli_template(template.name)
-            if not response.success:
-                error = f"Error deleting {template.name} template: {response.data}"
-                logger.warning(error)
-                raise FMGSyncDeleteError(error)
+            if self.settings.prod_run:
+                response = self.fmg.delete_cli_template_group(template_group.name)
+                if not response.success:
+                    error = f"Error deleting '{template_group.name}' template group: {response.data}"
+                    logger.warning(error)
+                    raise FMGSyncDeleteError(error)
+            else:
+                logger.info("TEST - deleting template group '%s'", template_group.name)
+        for template in templates.pre_run_templates + templates.templates:
+            if self.settings.prod_run:
+                response = self.fmg.delete_cli_template(template.name)
+                if not response.success:
+                    error = f"Error deleting '{template.name}' template: {response.data}"
+                    logger.warning(error)
+                    raise FMGSyncDeleteError(error)
+            else:
+                logger.info("TEST - deleting template '%s'", template.name)
 
     @staticmethod
     def _changed_templates(repo_data: TemplateTree, fmg_data: TemplateTree) -> TemplateTree:
