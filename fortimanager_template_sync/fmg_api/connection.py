@@ -362,6 +362,30 @@ class FMGSync(FMG):
         }
         return self.update(request)
 
+    def set_fmg_variable(
+        self, name: str, value: Optional[str] = None, description: Optional[str] = None
+    ) -> FMGResponse:
+        """Update metadata variable to use in CLI templates
+
+        Args:
+            name (str): variable name
+            value (str): default value
+            description (str): variable description
+        """
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/fmg/variable"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/fmg/variable"
+        request = {
+            "data": {
+                "description": description,
+                "name": name,
+                "value": value,
+            },
+            "url": url,
+        }
+        return self.set(request)
+
     def get_devices(self, filters: FILTER_TYPE = None):
         """Get devices"""
         if self._settings.adom == "global":

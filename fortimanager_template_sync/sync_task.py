@@ -133,16 +133,18 @@ class FMGSyncTask:
                 ).open()
             self._ensure_device_statuses(self._get_firewall_statuses(self.settings.protected_fw_group))
             # 4. download FMG templates and template groups from FMG
-            fmg_data = self._load_fmg_templates()
+            fmg_templates = self._load_fmg_templates()
             # 5. build list of templates to delete from FMG
+            to_delete = None
             if self.settings.delete_unused_templates:
-                to_delete = self._find_unused_templates(repo_data, fmg_data)
-                self._delete_templates(to_delete)
+                to_delete = self._find_unused_templates(repo_data, fmg_templates)
             # 6. build list of templates to upload to FMG
-            to_upload = self._changed_templates(repo_data, fmg_data)
-            if to_upload:
-                self._update_fmg_templates(to_upload)
+            to_upload = self._changed_templates(repo_data, fmg_templates)
             # 7. execute changes in FMG
+            if to_delete:
+                self._delete_templates(to_delete)
+            if to_upload:
+                self._update_fmg_templates(templates=to_upload, fmg_templates=fmg_templates)
             # 8. check firewall statuses
             # 9. deploy changes to firewalls in protected group only
             # 10. check firewall statuses again
@@ -488,9 +490,13 @@ class FMGSyncTask:
             template_groups=update_template_groups
         )
 
-    def _update_fmg_templates(self, templates: TemplateTree):
+    def _update_fmg_templates(self, templates: TemplateTree, fmg_templates: TemplateTree):
         """Update templates and template groups"""
         # need to update variables first
+        to_add_vars = [variable for variable in templates.variables if variable not in fmg_templates.variables]
+        for variable in to_add_vars:
+            result = self.fmg.add_fmg_variable(**variable.model_dump(by_alias=True))
+
 
         logger.info("Updating templates")
         for template in templates.pre_run_templates:
