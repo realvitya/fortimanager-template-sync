@@ -1,7 +1,7 @@
 """Pydantic data types"""
-from typing import List, Literal, Optional, Dict
+from typing import List, Literal, Optional, Dict, Union
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from pydantic.dataclasses import dataclass
 
 from fortimanager_template_sync.misc import sanitize_variables
@@ -35,7 +35,10 @@ class CLITemplate(BaseModel):
     script: str = ""
     type: Literal["cli", "jinja"] = "jinja"
     variables: Optional[List[Variable]] = None
-    scope_member: Optional[List[Dict[str, str]]] = None  # list of object this is assigned to
+    # return value only on loadsub
+    scope_member: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = Field(
+        None, exclude=True
+    )  # list of object this is assigned to
 
     def __eq__(self, other):
         """Add support for string equality"""
@@ -68,7 +71,10 @@ class CLITemplateGroup(BaseModel):
     description: str = ""
     member: Optional[List[str]] = None  # list of templates and template-groups (yes, their name is unique)
     variables: Optional[List[Variable]] = None
-    scope_member: Optional[List[Dict[str, str]]] = None  # list of object this is assigned to
+    # return value only on loadsub
+    scope_member: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = Field(
+        None, exclude=True
+    )  # list of object this is assigned to
 
     def __eq__(self, other):
         """Add support for string equality"""
@@ -101,7 +107,7 @@ class TemplateTree:
         return bool(len(self.pre_run_templates) + len(self.templates) + len(self.template_groups))
 
     @property
-    def variables(self) -> Optional[List[Variable]]:
+    def variables(self) -> List[Variable]:
         """Get list of all variables"""
         variables = [
             template.variables
@@ -112,4 +118,4 @@ class TemplateTree:
         for variable_list in variables:
             result.extend(variable_list)
         result = sanitize_variables(result)
-        return result if result else None
+        return result

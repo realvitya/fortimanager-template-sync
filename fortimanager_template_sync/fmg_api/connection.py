@@ -250,6 +250,33 @@ class FMGSync(FMG):
         }
         return self.update(request)
 
+    def set_cli_template_group(
+        self,
+        name: str,
+        description: str = "",
+        member: Optional[List[str]] = None,
+        variables: Optional[List[str]] = None,
+    ) -> FMGResponse:
+        """Set CLI template group"""
+        if not variables:
+            variables = []
+        if not member:
+            member = []
+        if self._settings.adom == "global":
+            url = "/pm/config/global/obj/cli/template-group"
+        else:
+            url = f"/pm/config/adom/{self._settings.adom}/obj/cli/template-group"
+        request = {
+            "data": {
+                "description": description,
+                "name": name,
+                "member": member,
+                "variables": variables,
+            },
+            "url": url,
+        }
+        return self.set(request)
+
     def get_cli_template_group(self, name: str) -> FMGResponse:
         """Get a specific CLI template group"""
         if self._settings.adom == "global":

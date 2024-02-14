@@ -1,4 +1,5 @@
 """FMG Sync Task"""
+import json
 import logging
 import re
 from copy import copy
@@ -10,7 +11,7 @@ from more_itertools import first
 from pyfortinet.fmg_api.common import F, FilterList
 
 from fortimanager_template_sync.config import FMGSyncSettings
-from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException, FMGSyncDeleteError
+from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException, FMGSyncDeleteError, FMGSyncException
 from fortimanager_template_sync.fmg_api import FMGSync
 from fortimanager_template_sync.misc import find_all_vars, sanitize_variables
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable, TemplateTree
@@ -250,11 +251,13 @@ class FMGSyncTask:
         logger.debug("Parsing %s template", name)
         description = ""
         variables = []
+        scope_members = None
         # gather metadata
         match = re.match(r"^{#(.*?)#}", data, re.S + re.I)
         if match:
             header = match.group(1)
             description = header.splitlines()[0].strip()
+            # parse used variables
             match = re.search(r"(?<=used vars:)\s*(?P<vars>.*?)\n(?:[\n#-]|$)", header, flags=re.S + re.I)
             if match and match.group("vars"):
                 vars_str = match.group("vars")
@@ -271,6 +274,16 @@ class FMGSyncTask:
                     else:
                         var_name, var_description, var_value = var, None, None
                     variables.append(Variable(name=var_name, description=var_description, value=var_value))
+            # parse assignments
+            match = re.search(r"(?<=assigned to:)\s*(?P<assigned>.*?)\n", header, flags=re.S + re.I)
+            if match and match.group("assigned"):
+                try:
+                    assigned = json.loads(match.group("assigned"))
+                    scope_members = assigned
+                except json.decoder.JSONDecodeError:
+                    logger.warning("Assignment target of '%s' at template '%s' is not valid JSON!")
+                    raise
+
         template_vars = find_all_vars(data)
         # filter out built-in datasource
         template_vars = [var for var in template_vars if not var.startswith("DVMDB")]
@@ -279,7 +292,9 @@ class FMGSyncTask:
         for template_var in template_vars:
             variables.append(Variable(name=template_var))
 
-        return CLITemplate(name=name, description=description, variables=variables, script=data)
+        return CLITemplate(
+            name=name, description=description, variables=variables, script=data, scope_member=scope_members
+        )
 
     @staticmethod
     def _parse_template_groups_data(
@@ -290,11 +305,21 @@ class FMGSyncTask:
         description = None
         members = []
         variables = []
+        scope_members = None
         # gather metadata
         match = re.match(r"^{#(.*?)#}", data, re.S + re.I)
         if match:
             header = match.group(1)
             description = header.splitlines()[0].strip()
+            # parse assignments
+            match = re.search(r"(?<=assigned to:)\s*(?P<assigned>.*?)\n", header, flags=re.S + re.I)
+            if match and match.group("assigned"):
+                try:
+                    assigned = json.loads(match.group("assigned"))
+                    scope_members = assigned
+                except json.decoder.JSONDecodeError:
+                    logger.warning("Assignment target of '%s' at template '%s' is not valid JSON!")
+                    raise
         # gather members
         for match in re.finditer(r"{%\s*include\s*\"templates/(?P<member>.*).j2\"\s*%}", data, re.M):
             members.append(match.group("member"))
@@ -304,7 +329,9 @@ class FMGSyncTask:
         # deduplicate and sanity check on variables
         variables = sanitize_variables(variables=variables)
 
-        return CLITemplateGroup(name=name, description=description, member=members, variables=variables)
+        return CLITemplateGroup(
+            name=name, description=description, member=members, variables=variables, scope_member=scope_members
+        )
 
     def _get_firewall_statuses(self, group: str) -> Dict[str, Dict[str, Any]]:
         """Gather firewall statuses in the specified group"""
@@ -461,8 +488,9 @@ class FMGSyncTask:
         update_pre_run_templates = []
         for template in repo_data.pre_run_templates:
             # search for existing template
-            fmg_template = first((templ for templ in fmg_data.pre_run_templates if template.name == templ.name),
-                                 default=None)
+            fmg_template = first(
+                (templ for templ in fmg_data.pre_run_templates if template.name == templ.name), default=None
+            )
             # if template need to be updated, add it to the list
             if fmg_template != template:
                 update_pre_run_templates.append(template)
@@ -470,8 +498,7 @@ class FMGSyncTask:
         update_templates = []
         for template in repo_data.templates:
             # search for existing template
-            fmg_template = first((templ for templ in fmg_data.templates if template.name == templ.name),
-                                 default=None)
+            fmg_template = first((templ for templ in fmg_data.templates if template.name == templ.name), default=None)
             # if template need to be updated, add it to the list
             if fmg_template != template:
                 update_templates.append(template)
@@ -479,25 +506,42 @@ class FMGSyncTask:
         update_template_groups = []
         for group in repo_data.template_groups:
             # search for existing template
-            fmg_group = first((grp for grp in fmg_data.template_groups if group.name == grp.name),
-                              default=None)
+            fmg_group = first((grp for grp in fmg_data.template_groups if group.name == grp.name), default=None)
             # if template group need to be updated, add it to the list
             if fmg_group != group:
                 update_template_groups.append(group)
         return TemplateTree(
             templates=update_templates,
             pre_run_templates=update_pre_run_templates,
-            template_groups=update_template_groups
+            template_groups=update_template_groups,
         )
 
-    def _update_fmg_templates(self, templates: TemplateTree, fmg_templates: TemplateTree):
+    def _update_fmg_templates(self, templates: TemplateTree, fmg_templates: TemplateTree) -> bool:
         """Update templates and template groups"""
         # need to update variables first
+        logger.info("Adding missing variables")
+        had_changed = False
         to_add_vars = [variable for variable in templates.variables if variable not in fmg_templates.variables]
         for variable in to_add_vars:
             result = self.fmg.add_fmg_variable(**variable.model_dump(by_alias=True))
-
+            if not result.success:
+                logger.error("Error adding variable '%s'", variable.name)
+            had_changed = True
 
         logger.info("Updating templates")
-        for template in templates.pre_run_templates:
-            self.fmg.set_cli_template()
+        for template in (*templates.pre_run_templates, *templates.templates):
+            result = self.fmg.set_cli_template(**template.model_dump(by_alias=True))
+            if not result.success:
+                logger.error("Error updating template '%s'", template.name)
+            elif template.scope_member:
+                self.fmg.assign_cli_template(template.name, template.scope_member)
+            had_changed = True
+
+        for template_group in templates.template_groups:
+            result = self.fmg.set_cli_template_group(**template_group.model_dump(by_alias=True))
+            if not result.success:
+                logger.error("Error updating template group '%s'", template_group.name)
+            elif template_group.scope_member:
+                self.fmg.assign_cli_template_group(template_group.name, template_group.scope_member)
+            had_changed = True
+        return had_changed

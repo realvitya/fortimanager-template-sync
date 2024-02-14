@@ -117,6 +117,6 @@ class TestHelpers:
         tree = TemplateTree(
             template_groups=[CLITemplateGroup(name="group1", variables=[Variable(name="var1")])],
             pre_run_templates=[CLITemplate(name="pre-run-template1", variables=[Variable(name="var2")])],
-            templates=[CLITemplate(name="template1", variables=[Variable(name="var2")])]
+            templates=[CLITemplate(name="template1", variables=[Variable(name="var2")])],
         )
         assert all([var in tree.variables for var in [Variable(name="var1"), Variable(name="var2")]])

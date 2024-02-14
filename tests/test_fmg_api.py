@@ -4,7 +4,7 @@ from pyfortinet.exceptions import FMGUnhandledException
 from pyfortinet.fmg_api.common import F
 
 from fortimanager_template_sync.fmg_api.connection import FMGSync
-from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup
+from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, TemplateTree
 from fortimanager_template_sync.sync_task import FMGSyncTask
 
 need_lab = pytest.mark.skipif(not pytest.lab_config, reason=f"Lab config {pytest.lab_config_file} does not exist!")
@@ -122,6 +122,16 @@ class TestFMGConnection:
     def test_load_fmg_templates(self):
         templates = self.task._load_fmg_templates()
         assert templates
+
+    @fmg_connected
+    def test_update_fmg_templates(self):
+        fmg_templates = self.task._load_fmg_templates()
+        new_templates = TemplateTree(
+            templates=[CLITemplate(name="test_template", description="test", script="{# test template #}")],
+            pre_run_templates=[],
+            template_groups=[CLITemplateGroup(name="test_template_group", member=["test_template"])],
+        )
+        assert self.task._update_fmg_templates(new_templates, fmg_templates) is True
 
     @fmg_connected
     def test_close_fmg(self):

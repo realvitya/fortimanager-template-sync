@@ -76,6 +76,7 @@ class TestGit:
             mgmt_interface  : Management interface name (default: mgmt)
             mgmt_ip         : mgmt interface ip/nm (e.g. 1.1.1.1/24)
             mgmt_gateway    : mgmt interface default gw (e.g 1.1.1.2)
+            Assigned to: {"name": "group1"}
             -#}
             {# j2lint: disable=jinja-statements-delimiter #}
             {{ mgmt_interface }}
@@ -91,6 +92,7 @@ class TestGit:
         assert "mgmt_interface" in template.variables
         # test object comparison
         assert Variable(name="mgmt_ip", description="mgmt interface ip/nm (e.g. 1.1.1.1/24)") in template.variables
+        assert template.scope_member.get("name")
 
     def test_parse_template_group_data(self):
         """Test parsing of template-group"""
@@ -98,6 +100,7 @@ class TestGit:
         data = textwrap.dedent(
             """\
             {# Test template group
+            # assigned to: {"name": "test_group"}
             -#}
             {# j2lint: disable=jinja-statements-delimiter #}
             {% include "templates/template1.j2" %}
@@ -114,6 +117,7 @@ class TestGit:
             and template_group.description == "Test template group"
             and template_group.member == ["template1", "template2"]
         )
+        assert template_group.scope_member.get("name") == "test_group"
 
     def test_load_local_repository(self):
         """Test load local repository"""
