@@ -4,14 +4,14 @@ import logging
 import re
 from copy import copy
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from git import Repo, InvalidGitRepositoryError, GitCommandError
 from more_itertools import first
-from pyfortinet.fmg_api.common import F, FilterList
 
+from fortimanager_template_sync.common_task import CommonTask
 from fortimanager_template_sync.config import FMGSyncSettings
-from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException, FMGSyncDeleteError, FMGSyncException
+from fortimanager_template_sync.exceptions import FMGSyncDeleteError
 from fortimanager_template_sync.fmg_api import FMGSync
 from fortimanager_template_sync.misc import find_all_vars, sanitize_variables
 from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable, TemplateTree
@@ -19,61 +19,7 @@ from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGrou
 logger = logging.getLogger("fortimanager_template_sync.sync_task")
 
 
-DEV_STATUS = {
-    0: "none",
-    "none": "none",
-    1: "unknown",
-    "unknown": "unknown",
-    2: "checkedin",
-    "checkedin": "checkedin",
-    3: "inprogress",
-    "inprogress": "inprogress",
-    4: "installed",
-    "installed": "installed",
-    5: "aborted",
-    "aborted": "aborted",
-    6: "sched",
-    "sched": "sched",
-    7: "retry",
-    "retry": "retry",
-    8: "canceled",
-    "canceled": "canceled",
-    9: "pending",
-    "pending": "pending",
-    10: "retrieved",
-    "retrieved": "retrieved",
-    11: "changed_conf",
-    "changed_conf": "changed_conf",
-    12: "sync_fail",
-    "sync_fail": "sync_fail",
-    13: "timeout",
-    "timeout": "timeout",
-    14: "rev_revert",
-    "rev_revert": "rev_revert",
-    15: "auto_updated",
-    "auto_updated": "auto_updated",
-}
-
-DB_STATUS = {
-    0: "unknown",
-    "unknown": "unknown",
-    1: "nomod",
-    "nomod": "nomod",
-    2: "mod",
-    "mod": "mod",
-}
-
-CONF_STATUS = {
-    0: "unknown",
-    "unknown": "unknown",
-    1: "insync",
-    "insync": "insync",
-    2: "outofsync",
-    "outofsync": "outofsync",
-}
-
-
-class FMGSyncTask:
+class FMGSyncTask(CommonTask):
     """
     Fortimanager Sync Task
 
@@ -91,16 +37,6 @@ class FMGSyncTask:
         settings (FMGSyncSettings): task settings to use
         fmg (FMGSync): FMG instance
     """
-
-    def __init__(self, settings: FMGSyncSettings, fmg: Optional[FMGSync] = None):
-        """Initialize task
-
-        Args:
-            settings: task settings
-            fmg: FMG connection if there is any
-        """
-        self.settings = settings
-        self.fmg = fmg
 
     def run(self):
         """Run task
@@ -146,9 +82,6 @@ class FMGSyncTask:
                 self._delete_templates(to_delete)
             if to_upload:
                 self._update_fmg_templates(templates=to_upload, fmg_templates=fmg_templates)
-            # 8. check firewall statuses
-            # 9. deploy changes to firewalls in protected group only
-            # 10. check firewall statuses again
             success = True
         finally:
             self.fmg.close(discard_changes=not success)
@@ -333,43 +266,6 @@ class FMGSyncTask:
             name=name, description=description, member=members, variables=variables, scope_member=scope_members
         )
 
-    def _get_firewall_statuses(self, group: str) -> Dict[str, Dict[str, Any]]:
-        """Gather firewall statuses in the specified group"""
-        logger.info("Gathering firewall statuses in group %s", group)
-        statuses = {}
-        device_list = self.fmg.get_group_members(group_name=group)
-        filters = FilterList()
-        for device in device_list.data.get("data", {}).get("object member"):
-            filters += F(name=device["name"])
-        device_list = self.fmg.get_devices(filters=filters)
-        for device_status in device_list.data.get("data"):
-            logger.debug(
-                "Device %s: dev_status: %s, conf_status: %s, db_status: %s",
-                device_status["name"],
-                DEV_STATUS.get(device_status["dev_status"]),
-                CONF_STATUS.get(device_status["conf_status"]),
-                DB_STATUS.get(device_status["db_status"]),
-            )
-
-            statuses[device_status["name"]] = {
-                "conf_status": CONF_STATUS.get(device_status["conf_status"]),
-                "db_status": DB_STATUS.get(device_status["db_status"]),
-                "dev_status": DEV_STATUS.get(device_status["dev_status"]),
-            }
-            if any(value is None for value in statuses[device_status["name"]].values()):
-                error = f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}"
-                logger.error(error)
-                raise FMGSyncInvalidStatusException(error)
-        return statuses
-
-    @staticmethod
-    def _ensure_device_statuses(statuses: Dict):
-        for device, status in statuses.items():
-            if status["conf_status"] not in ("insync",) or status["db_status"] not in ("nomod",):
-                error = f"Device '{device}' has problem with status: {status}"
-                logger.error(error)
-                raise FMGSyncInvalidStatusException(error)
-
     def _load_fmg_templates(self) -> TemplateTree:
         """Load template data from FMG"""
         logger.info("Loading templates from FMG")
@@ -523,25 +419,34 @@ class FMGSyncTask:
         had_changed = False
         to_add_vars = [variable for variable in templates.variables if variable not in fmg_templates.variables]
         for variable in to_add_vars:
-            result = self.fmg.add_fmg_variable(**variable.model_dump(by_alias=True))
-            if not result.success:
-                logger.error("Error adding variable '%s'", variable.name)
+            if self.settings.prod_run:
+                result = self.fmg.add_fmg_variable(**variable.model_dump(by_alias=True))
+                if not result.success:
+                    logger.error("Error adding variable '%s'", variable.name)
+            else:
+                logger.info("TEST - Adding variable '%s'", variable.name)
             had_changed = True
 
         logger.info("Updating templates")
         for template in (*templates.pre_run_templates, *templates.templates):
-            result = self.fmg.set_cli_template(**template.model_dump(by_alias=True))
-            if not result.success:
-                logger.error("Error updating template '%s'", template.name)
-            elif template.scope_member:
-                self.fmg.assign_cli_template(template.name, template.scope_member)
+            if self.settings.prod_run:
+                result = self.fmg.set_cli_template(**template.model_dump(by_alias=True))
+                if not result.success:
+                    logger.error("Error updating template '%s'", template.name)
+                elif template.scope_member:
+                    self.fmg.assign_cli_template(template.name, template.scope_member)
+            else:
+                logger.info("TEST - Updating template '%s'", template.name)
             had_changed = True
 
         for template_group in templates.template_groups:
-            result = self.fmg.set_cli_template_group(**template_group.model_dump(by_alias=True))
-            if not result.success:
-                logger.error("Error updating template group '%s'", template_group.name)
-            elif template_group.scope_member:
-                self.fmg.assign_cli_template_group(template_group.name, template_group.scope_member)
+            if self.settings.prod_run:
+                result = self.fmg.set_cli_template_group(**template_group.model_dump(by_alias=True))
+                if not result.success:
+                    logger.error("Error updating template group '%s'", template_group.name)
+                elif template_group.scope_member:
+                    self.fmg.assign_cli_template_group(template_group.name, template_group.scope_member)
+            else:
+                logger.info("TEST - Updating template_group '%s'", template_group.name)
             had_changed = True
         return had_changed
