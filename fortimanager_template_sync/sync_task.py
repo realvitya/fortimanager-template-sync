@@ -46,6 +46,7 @@ class FMGSyncTask(CommonTask):
             FMGSyncInvalidStatusException: on invalid device status
         """
         success = False
+        changes = False
         # 1. update local repository from remote
         repo = self._update_local_repository()
         if not repo:
@@ -79,11 +80,19 @@ class FMGSyncTask(CommonTask):
             to_upload = self._changed_templates(repo_data, fmg_templates)
             # 7. execute changes in FMG
             if to_delete:
-                self._delete_templates(to_delete)
+                changes = self._delete_templates(to_delete)
+            elif self.settings.delete_unused_templates:
+                logger.info("No templates to delete")
             if to_upload:
-                self._update_fmg_templates(templates=to_upload, fmg_templates=fmg_templates)
+                changes = self._update_fmg_templates(templates=to_upload, fmg_templates=fmg_templates) or changes
+            else:
+                logger.info("No templates to update!")
             success = True
         finally:
+            if changes:
+                logger.info("Changes applied successfully")
+            else:
+                logger.info("No changes happened")
             self.fmg.close(discard_changes=not success)
 
         return success
@@ -181,7 +190,7 @@ class FMGSyncTask(CommonTask):
             name (str): name of the template (file name without extension)
             data (str): raw text of the script file
         """
-        logger.debug("Parsing %s template", name)
+        logger.debug("Parsing '%s' template", name)
         description = ""
         variables = []
         scope_members = None
@@ -212,7 +221,7 @@ class FMGSyncTask(CommonTask):
             if match and match.group("assigned"):
                 try:
                     assigned = json.loads(match.group("assigned"))
-                    scope_members = assigned
+                    scope_members = assigned if isinstance(assigned, list) else [assigned]
                 except json.decoder.JSONDecodeError:
                     logger.warning("Assignment target of '%s' at template '%s' is not valid JSON!")
                     raise
@@ -234,7 +243,7 @@ class FMGSyncTask(CommonTask):
         name: str, data: str, templates: Optional[List[CLITemplate]] = None
     ) -> CLITemplateGroup:
         """Parse template group file"""
-        logger.debug("Parsing %s group", name)
+        logger.debug("Parsing '%s' group", name)
         description = None
         members = []
         variables = []
@@ -249,7 +258,7 @@ class FMGSyncTask(CommonTask):
             if match and match.group("assigned"):
                 try:
                     assigned = json.loads(match.group("assigned"))
-                    scope_members = assigned
+                    scope_members = assigned if isinstance(assigned, list) else [assigned]
                 except json.decoder.JSONDecodeError:
                     logger.warning("Assignment target of '%s' at template '%s' is not valid JSON!")
                     raise
@@ -281,19 +290,18 @@ class FMGSyncTask(CommonTask):
             for template in all_templates.data.get("data")
             if template.get("provision") == 1
         ]
-        logger.debug("%d number of pre-run templates loaded", len(pre_run_templates))
+        logger.debug("%d pre-run templates loaded", len(pre_run_templates))
         templates = [
             CLITemplate(
                 name=template["name"],
                 description=template.get("description"),
-                provision="enable",
                 script=template["script"],
                 variables=[Variable(name=var) for var in template["variables"]],
             )
             for template in all_templates.data.get("data")
             if template.get("provision") == 0
         ]
-        logger.debug("%d number of templates loaded", len(templates))
+        logger.debug("%d templates loaded", len(templates))
         all_groups = self.fmg.get_cli_template_groups()
         template_groups = [
             CLITemplateGroup(
@@ -301,10 +309,11 @@ class FMGSyncTask(CommonTask):
                 description=group.get("description"),
                 member=group.get("member"),
                 variables=[Variable(name=var) for var in group["variables"]],
+                scope_member=group.get("scope member")
             )
             for group in all_groups.data.get("data")
         ]
-        logger.debug("%d number of pre-run templates loaded", len(template_groups))
+        logger.debug("%d template groups loaded", len(template_groups))
         return TemplateTree(templates=templates, pre_run_templates=pre_run_templates, template_groups=template_groups)
 
     @staticmethod
@@ -360,6 +369,7 @@ class FMGSyncTask(CommonTask):
         logger.info("Deleting unused templates and template-groups")
         for template_group in templates.template_groups:
             if self.settings.prod_run:
+                logger.info("Deleting template group '%s'", template_group.name)
                 response = self.fmg.delete_cli_template_group(template_group.name)
                 if not response.success:
                     error = f"Error deleting '{template_group.name}' template group: {response.data}"
@@ -369,6 +379,7 @@ class FMGSyncTask(CommonTask):
                 logger.info("TEST - deleting template group '%s'", template_group.name)
         for template in templates.pre_run_templates + templates.templates:
             if self.settings.prod_run:
+                logger.info("Deleting template '%s'", template.name)
                 response = self.fmg.delete_cli_template(template.name)
                 if not response.success:
                     error = f"Error deleting '{template.name}' template: {response.data}"
@@ -415,14 +426,16 @@ class FMGSyncTask(CommonTask):
     def _update_fmg_templates(self, templates: TemplateTree, fmg_templates: TemplateTree) -> bool:
         """Update templates and template groups"""
         # need to update variables first
-        logger.info("Adding missing variables")
         had_changed = False
-        to_add_vars = [variable for variable in templates.variables if variable not in fmg_templates.variables]
+        to_add_vars = [variable for variable in templates.variables if variable.name not in fmg_templates.variables]
+        if to_add_vars:
+            logger.info("Adding missing variables")
         for variable in to_add_vars:
             if self.settings.prod_run:
-                result = self.fmg.add_fmg_variable(**variable.model_dump(by_alias=True))
+                result = self.fmg.set_fmg_variable(**variable.model_dump(by_alias=True))
                 if not result.success:
                     logger.error("Error adding variable '%s'", variable.name)
+                    continue
             else:
                 logger.info("TEST - Adding variable '%s'", variable.name)
             had_changed = True
@@ -433,6 +446,7 @@ class FMGSyncTask(CommonTask):
                 result = self.fmg.set_cli_template(**template.model_dump(by_alias=True))
                 if not result.success:
                     logger.error("Error updating template '%s'", template.name)
+                    continue
                 elif template.scope_member:
                     self.fmg.assign_cli_template(template.name, template.scope_member)
             else:
@@ -444,6 +458,7 @@ class FMGSyncTask(CommonTask):
                 result = self.fmg.set_cli_template_group(**template_group.model_dump(by_alias=True))
                 if not result.success:
                     logger.error("Error updating template group '%s'", template_group.name)
+                    continue
                 elif template_group.scope_member:
                     self.fmg.assign_cli_template_group(template_group.name, template_group.scope_member)
             else:

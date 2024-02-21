@@ -44,8 +44,15 @@ class CLITemplate(BaseModel):
         """Add support for string equality"""
         if isinstance(other, str):
             return self.name == other
-        else:
-            return super().__eq__(other)
+        elif isinstance(other, CLITemplate):
+            # return super().__eq__(other)  # not working, variables can differ being list of other objects
+            return self.name == other.name and self.description == other.description and \
+                self.provision == other.provision and self.script == other.script and self.type == other.type and \
+                sorted([var.name for var in self.variables]) == sorted([var.name for var in other.variables]) and \
+                self.scope_member == other.scope_member if not isinstance(self.scope_member, list) else \
+                sorted([scope for scope in self.scope_member]) == sorted([scope for scope in other.scope_member])
+        else:  # e.g. None
+            return False
 
     @field_validator("provision", mode="before")
     def standardize_provision(cls, v):
@@ -72,7 +79,7 @@ class CLITemplateGroup(BaseModel):
     member: Optional[List[str]] = None  # list of templates and template-groups (yes, their name is unique)
     variables: Optional[List[Variable]] = None
     # return value only on loadsub
-    scope_member: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = Field(
+    scope_member: Optional[List[Dict[str, str]]] = Field(
         None, exclude=True
     )  # list of object this is assigned to
 
@@ -80,9 +87,31 @@ class CLITemplateGroup(BaseModel):
         """Add support for string equality"""
         if isinstance(other, str):
             return self.name == other
-        else:
-            return super().__eq__(other)
-
+        elif isinstance(other, CLITemplateGroup):
+            # return super().__eq__(other)  # not working, variables can differ being list of other objects
+            if not self.name == other.name:
+                return False
+            if not self.description == other.description:
+                return False
+            if not isinstance(self.member, list):
+                if not self.member == other.member:
+                    return False
+            else:
+                if not sorted(self.member) == sorted(other.member):
+                    return False
+            if not isinstance(self.variables, list):
+                if not self.variables == other.variables:
+                    return False
+            else:
+                if not sorted([var.name for var in self.variables]) == sorted([var.name for var in other.variables]):
+                    return False
+            if not isinstance(self.scope_member, list):
+                if not self.scope_member == other.scope_member:
+                    return False
+            else:
+                return sorted([scope for scope in self.scope_member]) == sorted([scope for scope in other.scope_member])
+        else:  # e.g. None
+            return False
 
 @dataclass
 class TemplateTree:

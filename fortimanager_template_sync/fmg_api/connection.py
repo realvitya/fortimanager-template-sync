@@ -5,7 +5,7 @@ from typing import Optional, List, Literal, Union, Dict
 from pyfortinet import FMG, FMGResponse
 from pyfortinet.exceptions import FMGEmptyResultException
 from pyfortinet.fmg_api.common import FILTER_TYPE
-from pyfortinet.fmg_api.dvmbd import Device
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class FMGSync(FMG):
         description: str = "",
         provision: Literal["disable", "enable"] = "disable",
         type: Literal["cli", "jinja"] = "jinja",
-        variables: Optional[List[str]] = None,
+        variables: Optional[List[dict]] = None,
     ) -> FMGResponse:
         """Add CLI template"""
         if not variables:
@@ -38,7 +38,7 @@ class FMGSync(FMG):
                 "provision": provision,
                 "script": script,
                 "type": type,
-                "variables": variables,
+                "variables": [variable["name"] for variable in variables],
             },
             "url": url,
         }
@@ -100,7 +100,7 @@ class FMGSync(FMG):
         description: str = "",
         provision: Literal["disable", "enable"] = "disable",
         type: Literal["cli", "jinja"] = "jinja",
-        variables: Optional[List[str]] = None,
+        variables: Optional[List[dict]] = None,
     ) -> FMGResponse:
         """Update a CLI template"""
         if not variables:
@@ -118,7 +118,7 @@ class FMGSync(FMG):
                 "provision": provision,
                 "script": script,
                 "type": type,
-                "variables": variables,
+                "variables": [variable["name"] for variable in variables],
             },
             "url": url,
         }
@@ -132,7 +132,7 @@ class FMGSync(FMG):
         description: str = "",
         provision: Literal["disable", "enable"] = "disable",
         type: Literal["cli", "jinja"] = "jinja",
-        variables: Optional[List[str]] = None,
+        variables: Optional[List[dict]] = None,
     ) -> FMGResponse:
         """Update a CLI template"""
         if not variables:
@@ -150,7 +150,7 @@ class FMGSync(FMG):
                 "provision": provision,
                 "script": script,
                 "type": type,
-                "variables": variables,
+                "variables": [variable["name"] for variable in variables],
             },
             "url": url,
         }
@@ -201,7 +201,7 @@ class FMGSync(FMG):
         name: str,
         description: str = "",
         member: Optional[List[str]] = None,
-        variables: Optional[List[str]] = None,
+        variables: Optional[List[dict]] = None,
     ) -> FMGResponse:
         """Add CLI template group"""
         if not variables:
@@ -217,7 +217,7 @@ class FMGSync(FMG):
                 "description": description,
                 "name": name,
                 "member": member,
-                "variables": variables,
+                "variables": [variable["name"] for variable in variables],
             },
             "url": url,
         }
@@ -228,7 +228,7 @@ class FMGSync(FMG):
         name: str,
         description: str = "",
         member: Optional[List[str]] = None,
-        variables: Optional[List[str]] = None,
+        variables: Optional[List[dict]] = None,
     ) -> FMGResponse:
         """Update CLI template group"""
         if not variables:
@@ -244,7 +244,7 @@ class FMGSync(FMG):
                 "description": description,
                 "name": name,
                 "member": member,
-                "variables": variables,
+                "variables": [variable["name"] for variable in variables],
             },
             "url": url,
         }
@@ -255,7 +255,7 @@ class FMGSync(FMG):
         name: str,
         description: str = "",
         member: Optional[List[str]] = None,
-        variables: Optional[List[str]] = None,
+        variables: Optional[List[dict]] = None,
     ) -> FMGResponse:
         """Set CLI template group"""
         if not variables:
@@ -271,7 +271,7 @@ class FMGSync(FMG):
                 "description": description,
                 "name": name,
                 "member": member,
-                "variables": variables,
+                "variables": [variable["name"] for variable in variables],
             },
             "url": url,
         }

@@ -79,12 +79,16 @@ class CommonTask(object):
 
     def _get_firewall_statuses(self, group: str) -> Dict[str, Dict[str, Any]]:
         """Gather firewall statuses in the specified group"""
-        logger.info("Gathering firewall statuses in group %s", group)
+        logger.info("Gathering firewall statuses in group '%s'", group)
         statuses = {}
         device_list = self.fmg.get_group_members(group_name=group)
+        if "object member" not in device_list.data.get("data", {}):
+            logger.debug("No devices found in group '%s'", group)
+            return statuses
         filters = FilterList()
         for device in device_list.data.get("data", {}).get("object member"):
             filters += F(name=device["name"])
+        logger.debug("Found %d devices", len(filters))
         device_list = self.fmg.get_devices(filters=filters)
         for device_status in device_list.data.get("data"):
             logger.debug(

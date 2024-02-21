@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+import urllib3
 
 from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.sync_task import FMGSyncTask
@@ -35,7 +36,7 @@ def sync_run(
             envvar="FMGSYNC_PROTECTED_FW_GROUP",
             help="This group in FMG will be checked for FW status. Also this group will be deployed only",
         ),
-    ] = "production",
+    ] = "automation",
     delete_unused_templates: Annotated[bool, typer.Option("--delete-unused-templates", "-d")] = False,
     prod_run: Annotated[bool, typer.Option("--force-changes", "-f", help="do changes")] = False,
 ):
@@ -55,8 +56,14 @@ def sync_run(
         delete_unused_templates=delete_unused_templates,
         prod_run=prod_run,
     )
-
+    if not fmg_verify:
+        urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
     start_time = time.time()
-    job = FMGSyncTask(settings)
-    job.run()
+    task = FMGSyncTask(settings)
+    result = task.run()
     logger.info("Operation took %ss", round(time.time() - start_time, 2))
+    if result:
+        logger.info("Sync task finished successfully!")
+    else:
+        logger.warning("Sync task finished with problems!")
+        exit(1)

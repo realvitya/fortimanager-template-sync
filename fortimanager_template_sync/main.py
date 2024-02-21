@@ -35,6 +35,8 @@ def main(
 
     # setup logging
     dictConfig(get_logging_config(logging_config))
+    if not debug:
+        app.pretty_exceptions_show_locals = False  # disable debug info in exceptions (security)
     if debug > 0:
         logging.getLogger("fortimanager_template_sync").setLevel(logging.DEBUG)
     if debug > 1:

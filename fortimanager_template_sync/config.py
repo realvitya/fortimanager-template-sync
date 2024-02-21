@@ -1,6 +1,5 @@
 """Configuration model"""
-from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from pydantic import field_validator, SecretStr, AnyHttpUrl, DirectoryPath
 from pydantic_core import Url
