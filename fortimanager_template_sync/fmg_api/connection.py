@@ -424,6 +424,10 @@ class FMGSync(FMG):
             "url": url,
             "fields": ["name", "conf_status", "conn_status", "db_status", "dev_status"],
             "loadsub": 1,  # gather vdoms
+            "option": [
+                "extra info",
+                "assignment info",
+            ],
         }
         if filters:
             request["filter"] = self._get_filter_list(filters)

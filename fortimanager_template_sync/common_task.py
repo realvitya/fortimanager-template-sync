@@ -103,6 +103,7 @@ class CommonTask(object):
                 "conf_status": CONF_STATUS.get(device_status["conf_status"]),
                 "db_status": DB_STATUS.get(device_status["db_status"]),
                 "dev_status": DEV_STATUS.get(device_status["dev_status"]),
+                "cli_status": device_status.get("vdom", [])  # TODO: continue
             }
             if any(value is None for value in statuses[device_status["name"]].values()):
                 error = f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}"
