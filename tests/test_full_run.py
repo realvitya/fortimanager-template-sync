@@ -1,6 +1,6 @@
 """Test FMG API features"""
 import pytest
-from fortimanager_template_sync.main import app
+from fortimanager_template_sync.__main__ import app
 
 need_lab = pytest.mark.skipif(not pytest.lab_config, reason=f"Lab config {pytest.lab_config_file} does not exist!")
 
