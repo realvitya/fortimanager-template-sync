@@ -1,7 +1,8 @@
 """Pydantic data types"""
-from typing import List, Literal, Optional, Dict, Union
 
-from pydantic import BaseModel, field_validator, Field
+from typing import Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field, field_validator
 from pydantic.dataclasses import dataclass
 
 from fortimanager_template_sync.misc import sanitize_variables
@@ -36,9 +37,7 @@ class CLITemplate(BaseModel):
     type: Literal["cli", "jinja"] = "jinja"
     variables: Optional[List[Variable]] = None
     # return value only on loadsub
-    scope_member: Optional[List[Dict[str, str]]] = Field(
-        None, exclude=True
-    )  # list of object this is assigned to
+    scope_member: Optional[List[Dict[str, str]]] = Field(None, exclude=True)  # list of object this is assigned to
 
     def __eq__(self, other):
         """Add support for string equality"""
@@ -46,10 +45,15 @@ class CLITemplate(BaseModel):
             return self.name == other
         elif isinstance(other, CLITemplate):
             # return super().__eq__(other)  # not working, variables can differ being list of other objects
-            return self.name == other.name and self.description == other.description and \
-                self.provision == other.provision and self.script == other.script and self.type == other.type and \
-                sorted([var.name for var in self.variables]) == sorted([var.name for var in other.variables]) and \
-                sorted([scope for scope in self.scope_member]) == sorted([scope for scope in other.scope_member])
+            return (
+                self.name == other.name
+                and self.description == other.description
+                and self.provision == other.provision
+                and self.script == other.script
+                and self.type == other.type
+                and sorted([var.name for var in self.variables]) == sorted([var.name for var in other.variables])
+                and sorted([scope for scope in self.scope_member]) == sorted([scope for scope in other.scope_member])
+            )
         else:  # e.g. None
             return False
 
@@ -78,9 +82,7 @@ class CLITemplateGroup(BaseModel):
     member: Optional[List[str]] = None  # list of templates and template-groups (yes, their name is unique)
     variables: Optional[List[Variable]] = None
     # return value only on loadsub
-    scope_member: Optional[List[Dict[str, str]]] = Field(
-        None, exclude=True
-    )  # list of object this is assigned to
+    scope_member: Optional[List[Dict[str, str]]] = Field(None, exclude=True)  # list of object this is assigned to
 
     def __eq__(self, other):
         """Add support for string equality"""
@@ -95,15 +97,13 @@ class CLITemplateGroup(BaseModel):
             if not isinstance(self.member, list):
                 if not self.member == other.member:
                     return False
-            else:
-                if not sorted(self.member) == sorted(other.member):
-                    return False
+            elif not sorted(self.member) == sorted(other.member):
+                return False
             if not isinstance(self.variables, list):
                 if not self.variables == other.variables:
                     return False
-            else:
-                if not sorted([var.name for var in self.variables]) == sorted([var.name for var in other.variables]):
-                    return False
+            elif not sorted([var.name for var in self.variables]) == sorted([var.name for var in other.variables]):
+                return False
             if not isinstance(self.scope_member, list):
                 if not self.scope_member == other.scope_member:
                     return False

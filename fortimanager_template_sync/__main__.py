@@ -1,16 +1,16 @@
 """Main program"""
+
+import logging
 from logging.config import dictConfig
-from typing import Optional
+from typing import Annotated, Optional
 
 import dotenv
-import logging
 import typer
-from typing_extensions import Annotated
 
 from fortimanager_template_sync import __version__
+from fortimanager_template_sync.deploy_run import deploy_run
 from fortimanager_template_sync.misc import get_logging_config
 from fortimanager_template_sync.sync_run import sync_run
-from fortimanager_template_sync.deploy_run import deploy_run
 
 app = typer.Typer(context_settings={"help_option_names": ["-h", "--help"]}, add_completion=False, no_args_is_help=True)
 app.command(name="sync", help="GIT/FMG sync operation")(sync_run)

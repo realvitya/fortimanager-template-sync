@@ -1,11 +1,11 @@
 """FMG connection"""
+
 import logging
-from typing import Optional, List, Literal, Union, Dict
+from typing import Dict, List, Literal, Optional, Union
 
 from pyfortinet import FMG, FMGResponse
 from pyfortinet.exceptions import FMGEmptyResultException
 from pyfortinet.fmg_api.common import FILTER_TYPE
-
 
 logger = logging.getLogger(__name__)
 

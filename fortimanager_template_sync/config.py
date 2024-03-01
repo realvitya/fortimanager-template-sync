@@ -1,7 +1,8 @@
 """Configuration model"""
+
 from typing import Optional
 
-from pydantic import field_validator, SecretStr, AnyHttpUrl, DirectoryPath
+from pydantic import AnyHttpUrl, DirectoryPath, SecretStr, field_validator
 from pydantic_core import Url
 from pydantic_core.core_schema import ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict

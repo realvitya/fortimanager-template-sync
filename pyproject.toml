@@ -70,39 +70,53 @@ plugins = [
     "pydantic.mypy"
 ]
 
-[tool.black]
-line-length = 120
-target-version = ['py39']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-    | private
-    | docs
-    | db
-    | misc
-    | private
-  )/
-  | settings.py     # This is where you define files that should not be stylized by black
-                     # the root of the project
-)
-'''
+#[tool.black]
+#line-length = 120
+#target-version = ['py39']
+#include = '\.pyi?$'
+#exclude = '''
+#(
+#  /(
+#      \.eggs         # exclude a few common directories in the
+#    | \.git          # root of the project
+#    | \.hg
+#    | \.mypy_cache
+#    | \.tox
+#    | \.venv
+#    | _build
+#    | buck-out
+#    | build
+#    | dist
+#    | private
+#    | docs
+#    | db
+#    | misc
+#    | private
+#  )/
+#  | settings.py     # This is where you define files that should not be stylized by black
+#                     # the root of the project
+#)
+#'''
 
 [tool.ruff]
 # docs: https://docs.astral.sh/ruff
 line-length = 120
+indent-width = 4
 target-version = "py39"
-extend-exclude = ["private", ".idea", "example", "docs"]
+extend-exclude = ["private", ".idea", "example", "docs", "site"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
 
 [tool.ruff.lint]
 select = [
@@ -122,7 +136,7 @@ select = [
     "PL",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.pymarkdown]

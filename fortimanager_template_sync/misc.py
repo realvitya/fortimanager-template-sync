@@ -1,7 +1,8 @@
 """Miscellaneous utilities."""
+
 import logging
 from pathlib import Path
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from jinja2 import Environment, meta
 from more_itertools import first

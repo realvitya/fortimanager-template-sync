@@ -1,20 +1,20 @@
 """FMG Sync Task"""
+
 import json
 import logging
 import re
 from copy import copy
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
-from git import Repo, InvalidGitRepositoryError, GitCommandError
+from git import GitCommandError, InvalidGitRepositoryError, Repo
 from more_itertools import first
 
 from fortimanager_template_sync.common_task import CommonTask
-from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.exceptions import FMGSyncDeleteError
 from fortimanager_template_sync.fmg_api import FMGSync
+from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, TemplateTree, Variable
 from fortimanager_template_sync.misc import find_all_vars, sanitize_variables
-from fortimanager_template_sync.fmg_api.data import CLITemplate, CLITemplateGroup, Variable, TemplateTree
 
 logger = logging.getLogger("fortimanager_template_sync.sync_task")
 
@@ -309,7 +309,7 @@ class FMGSyncTask(CommonTask):
                 description=group.get("description"),
                 member=group.get("member"),
                 variables=[Variable(name=var) for var in group["variables"]],
-                scope_member=group.get("scope member")
+                scope_member=group.get("scope member"),
             )
             for group in all_groups.data.get("data")
         ]

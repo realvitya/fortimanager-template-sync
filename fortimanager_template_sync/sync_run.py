@@ -9,7 +9,6 @@ import urllib3
 from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.sync_task import FMGSyncTask
 
-
 logger = logging.getLogger("fortimanager_template_sync.sync_run")
 
 

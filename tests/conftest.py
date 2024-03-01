@@ -1,4 +1,5 @@
 """Pytest setup"""
+
 from pathlib import Path
 
 import dotenv

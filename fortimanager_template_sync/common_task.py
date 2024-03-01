@@ -1,12 +1,11 @@
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-from pyfortinet.fmg_api.common import FilterList, F
+from pyfortinet.fmg_api.common import F, FilterList
 
 from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException
 from fortimanager_template_sync.fmg_api import FMGSync
-
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +64,9 @@ CONF_STATUS = {
 }
 
 
-class CommonTask(object):
+class CommonTask:
     """Common task functionalities"""
+
     def __init__(self, settings: FMGSyncSettings, fmg: Optional[FMGSync] = None):
         """Initialize task
 
@@ -103,7 +103,7 @@ class CommonTask(object):
                 "conf_status": CONF_STATUS.get(device_status["conf_status"]),
                 "db_status": DB_STATUS.get(device_status["db_status"]),
                 "dev_status": DEV_STATUS.get(device_status["dev_status"]),
-                "cli_status": device_status.get("vdom", [])  # TODO: continue
+                "cli_status": device_status.get("vdom", []),  # TODO: continue
             }
             if any(value is None for value in statuses[device_status["name"]].values()):
                 error = f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}"

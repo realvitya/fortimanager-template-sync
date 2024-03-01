@@ -1,4 +1,5 @@
 """Test helper functions/methods"""
+
 import pytest
 
 from fortimanager_template_sync.exceptions import FMGSyncInvalidStatusException, FMGSyncVariableException

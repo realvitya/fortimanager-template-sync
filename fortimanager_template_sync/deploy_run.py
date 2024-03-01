@@ -8,7 +8,6 @@ import typer
 from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.deploy_task import FMGDeployTask
 
-
 logger = logging.getLogger("fortimanager_template_sync.deploy_run")
 
 

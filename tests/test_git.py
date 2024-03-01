@@ -1,4 +1,5 @@
 """Test GIT features"""
+
 import os
 import shutil
 import stat
@@ -9,11 +10,11 @@ from typing import Callable, Tuple
 import pytest
 from git import Repo
 
-from fortimanager_template_sync.fmg_api.data import Variable, CLITemplate
+from fortimanager_template_sync.fmg_api.data import CLITemplate, Variable
 from fortimanager_template_sync.sync_task import FMGSyncTask
 
 need_lab = pytest.mark.skipif(not pytest.lab_config, reason=f"Lab config {pytest.lab_config_file} does not exist!")
-use_remote_git = pytest.mark.skipif(not pytest.lab_config.git_token, reason=f"Not remote git token specified!")
+use_remote_git = pytest.mark.skipif(not pytest.lab_config.git_token, reason="Not remote git token specified!")
 
 
 def on_rm_error(func: Callable, path: str, exc_info: Tuple) -> None:

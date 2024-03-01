@@ -1,4 +1,5 @@
 """Test FMG API features"""
+
 import pytest
 from pyfortinet.exceptions import FMGUnhandledException
 from pyfortinet.fmg_api.common import F
