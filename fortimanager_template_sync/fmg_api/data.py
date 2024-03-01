@@ -36,7 +36,7 @@ class CLITemplate(BaseModel):
     type: Literal["cli", "jinja"] = "jinja"
     variables: Optional[List[Variable]] = None
     # return value only on loadsub
-    scope_member: Optional[Union[Dict[str, str], List[Dict[str, str]]]] = Field(
+    scope_member: Optional[List[Dict[str, str]]] = Field(
         None, exclude=True
     )  # list of object this is assigned to
 
@@ -49,7 +49,6 @@ class CLITemplate(BaseModel):
             return self.name == other.name and self.description == other.description and \
                 self.provision == other.provision and self.script == other.script and self.type == other.type and \
                 sorted([var.name for var in self.variables]) == sorted([var.name for var in other.variables]) and \
-                self.scope_member == other.scope_member if not isinstance(self.scope_member, list) else \
                 sorted([scope for scope in self.scope_member]) == sorted([scope for scope in other.scope_member])
         else:  # e.g. None
             return False
@@ -112,6 +111,7 @@ class CLITemplateGroup(BaseModel):
                 return sorted([scope for scope in self.scope_member]) == sorted([scope for scope in other.scope_member])
         else:  # e.g. None
             return False
+
 
 @dataclass
 class TemplateTree:

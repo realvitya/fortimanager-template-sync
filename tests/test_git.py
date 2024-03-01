@@ -72,11 +72,11 @@ class TestGit:
             3. setup mgmt interface
             4. adds default route for mgmt interface
 
-            Used vars:
+            #Used vars:
             mgmt_interface  : Management interface name (default: mgmt)
             mgmt_ip         : mgmt interface ip/nm (e.g. 1.1.1.1/24)
             mgmt_gateway    : mgmt interface default gw (e.g 1.1.1.2)
-            Assigned to: {"name": "group1"}
+            #Assigned to: {"name": "group1"}
             -#}
             {# j2lint: disable=jinja-statements-delimiter #}
             {{ mgmt_interface }}
@@ -92,7 +92,7 @@ class TestGit:
         assert "mgmt_interface" in template.variables
         # test object comparison
         assert Variable(name="mgmt_ip", description="mgmt interface ip/nm (e.g. 1.1.1.1/24)") in template.variables
-        assert template.scope_member.get("name")
+        assert template.scope_member[0].get("name")
 
     def test_parse_template_group_data(self):
         """Test parsing of template-group"""
@@ -117,7 +117,7 @@ class TestGit:
             and template_group.description == "Test template group"
             and template_group.member == ["template1", "template2"]
         )
-        assert template_group.scope_member.get("name") == "test_group"
+        assert template_group.scope_member[0].get("name") == "test_group"
 
     def test_load_local_repository(self):
         """Test load local repository"""
