@@ -40,6 +40,8 @@ def main(
     if debug > 0:
         logging.getLogger("fortimanager_template_sync").setLevel(logging.DEBUG)
     if debug > 1:
+        app.pretty_exceptions_show_locals = True
+    if debug > 2:
         logging.level = logging.DEBUG
 
     # load environment variables for tests

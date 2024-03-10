@@ -103,7 +103,12 @@ class CommonTask:
                 "conf_status": CONF_STATUS.get(device_status["conf_status"]),
                 "db_status": DB_STATUS.get(device_status["db_status"]),
                 "dev_status": DEV_STATUS.get(device_status["dev_status"]),
-                "cli_status": device_status.get("vdom", []),  # TODO: continue
+                "cli_status": {  # collect CLI template assignments for each VDOM
+                    vdom["name"]: assign
+                    for vdom in device_status.get("vdom", [])
+                    for assign in vdom.get("assignment info", [])
+                    if assign["type"] == "cli"
+                },
             }
             if any(value is None for value in statuses[device_status["name"]].values()):
                 error = f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}"

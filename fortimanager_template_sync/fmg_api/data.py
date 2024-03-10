@@ -45,14 +45,18 @@ class CLITemplate(BaseModel):
             return self.name == other
         elif isinstance(other, CLITemplate):
             # return super().__eq__(other)  # not working, variables can differ being list of other objects
+            svars = sorted([var.name for var in self.variables]) if self.variables else self.variables
+            ovars = sorted([var.name for var in other.variables]) if other.variables else other.variables
+            sscope = sorted([scope for scope in self.scope_member]) if self.scope_member else self.scope_member
+            oscope = sorted([scope for scope in other.scope_member]) if other.scope_member else other.scope_member
             return (
                 self.name == other.name
                 and self.description == other.description
                 and self.provision == other.provision
                 and self.script == other.script
                 and self.type == other.type
-                and sorted([var.name for var in self.variables]) == sorted([var.name for var in other.variables])
-                and sorted([scope for scope in self.scope_member]) == sorted([scope for scope in other.scope_member])
+                and svars == ovars
+                and sscope == oscope
             )
         else:  # e.g. None
             return False

@@ -89,7 +89,7 @@ class FMGSyncTask(CommonTask):
                 logger.info("No templates to update!")
             success = True
         finally:
-            if changes:
+            if changes and self.settings.prod_run:
                 logger.info("Changes applied successfully")
             else:
                 logger.info("No changes happened")
