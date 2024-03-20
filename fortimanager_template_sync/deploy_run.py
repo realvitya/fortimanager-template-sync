@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+import urllib3
 
 from fortimanager_template_sync.config import FMGSyncSettings
 from fortimanager_template_sync.deploy_task import FMGDeployTask
@@ -20,7 +21,7 @@ def deploy_run(
         typer.Option("--template-branch", "-b", envvar="FMGSYNC_TEMPLATE_BRANCH", help="Branch in repository to sync"),
     ] = "main",
     git_token: Annotated[str, typer.Option("--git-token", envvar="FMGSYNC_GIT_TOKEN")] = None,
-    local_repo: Annotated[Path, typer.Option("--local-path", "-l", envvar="FMGSYNC_LOCAL_PATH")] = "./fmg-templates/",
+    local_repo: Annotated[Path, typer.Option("--local-path", "-l", envvar="FMGSYNC_LOCAL_REPO")] = "./fmg-templates/",
     fmg_url: Annotated[str, typer.Option("--fmg-url", "-url", envvar="FMGSYNC_FMG_URL")] = None,
     fmg_user: Annotated[str, typer.Option("--fmg-user", "-u", envvar="FMGSYNC_FMG_USER")] = None,
     fmg_pass: Annotated[str, typer.Option("--fmg-pass", "-p", envvar="FMGSYNC_FMG_PASS")] = None,
@@ -54,7 +55,21 @@ def deploy_run(
         prod_run=prod_run,
     )
 
+    if not fmg_verify:
+        urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
     start_time = time.time()
-    job = FMGDeployTask(settings)
-    job.run()
-    logger.info("Operation took %ss", round(time.time() - start_time, 2))
+    result = False
+    try:
+        task = FMGDeployTask(settings)
+        result = task.run()
+    except Exception as err:
+        logger.error(err)
+        exit(1)
+    finally:
+        logger.info("Operation took %ss", round(time.time() - start_time, 2))
+    if result:
+        logger.info("Deploy task finished successfully!")
+        exit(0)
+    else:
+        logger.warning("Deploy task finished with problems!")
+        exit(1)

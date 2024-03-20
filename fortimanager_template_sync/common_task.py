@@ -91,14 +91,6 @@ class CommonTask:
         logger.debug("Found %d devices", len(filters))
         device_list = self.fmg.get_devices(filters=filters)
         for device_status in device_list.data.get("data"):
-            logger.debug(
-                "Device %s: dev_status: %s, conf_status: %s, db_status: %s",
-                device_status["name"],
-                DEV_STATUS.get(device_status["dev_status"]),
-                CONF_STATUS.get(device_status["conf_status"]),
-                DB_STATUS.get(device_status["db_status"]),
-            )
-
             statuses[device_status["name"]] = {
                 "conf_status": CONF_STATUS.get(device_status["conf_status"]),
                 "db_status": DB_STATUS.get(device_status["db_status"]),
@@ -110,6 +102,7 @@ class CommonTask:
                     if assign["type"] == "cli"
                 },
             }
+            logger.debug("Device %s: %s", device_status["name"], statuses[device_status["name"]])
             if any(value is None for value in statuses[device_status["name"]].values()):
                 error = f"Status of {device_status['name']} is invalid: {statuses[device_status['name']]}"
                 logger.error(error)
