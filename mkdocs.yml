@@ -4,11 +4,39 @@ site_description: Supporting of Fortinet CLI template development and deployment
 site_author: Viktor Kertesz
 site_url: https://fortimanager-template-sync.github.io/
 
-repo_name: viktorkertesz/fortimanager-template-sync
-repo_url: https://github.com/viktorkertesz/fortimanager-template-sync
+repo_name: realvitya/fortimanager-template-sync
+repo_url: https://github.com/realvitya/fortimanager-template-sync
 
 theme:
   name: material
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.footer
+    - navigation.indexes
+    - navigation.path  # insider
+    - content.code.copy
+    - content.code.select
+
+copyright: Copyright &copy; 2024 Viktor Kertesz
 
 extra_css:
   - extra.css
@@ -16,15 +44,18 @@ extra_css:
 nav:
   - Home: README.md
   - GitHub Guide:
-      - Developing templates: github_guide/github_workflow.md
-      - Creating actions: github_guide/github_actions.md
+      - github_guide/index.md
+      - Repository Settings: github_guide/github_repository.md
+      - Developing Templates: github_guide/github_workflow.md
+      - Creating Actions: github_guide/github_actions.md
   - User Guide:
+      - user_guide/index.md
       - Quick Start Guide: user_guide/quickstart.md
       - Installation: user_guide/installation.md
       - Repository Structure: user_guide/repository.md
-      - Lab setup: user_guide/lab_setup.md
+      - Lab Setup: user_guide/lab_setup.md
   - Developer Guide:
-      - Lab setup: user_guide/lab_setup.md
+      - developer_guide/index.md
   - Code Reference: reference/
 
 plugins:
@@ -49,9 +80,27 @@ plugins:
           show_labels: true
           group_by_category: true
           parameter_headings: false
+          filters:
+            - "!__"
 
 - section-index
 - literate-nav
+
+markdown_extensions:
+  - toc:
+      permalink: "#"
+      baselevel: 1
+      separator: "_"
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      use_pygments: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
 
 watch:
     - fortimanager_template_sync

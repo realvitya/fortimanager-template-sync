@@ -38,12 +38,11 @@ class FMGSyncTask(CommonTask):
         fmg (FMGSync): FMG instance
     """
 
-    def run(self):
-        """Run task
+    def run(self) -> bool:
+        """Run sync task
 
-        Raises:
-            FMGSyncVariableException: on invalid variable definitions or conflict
-            FMGSyncInvalidStatusException: on invalid device status
+        Returns:
+            (bool): True if sync task succeeded, False otherwise
         """
         success = False
         changes = False
@@ -118,7 +117,7 @@ class FMGSyncTask(CommonTask):
         ```
 
         Any other files are ignored. All directories are optional, it's not mandatory to have all of them.
-        See [docs](repository.md) for additional information.
+        See [docs](../user_guide/repository.md) for additional information.
 
         Returns:
             Repository with cloned templates
