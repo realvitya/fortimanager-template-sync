@@ -14,13 +14,17 @@ extra_css:
   - extra.css
 
 nav:
-  - Home: index.md
+  - Home: README.md
+  - GitHub Guide:
+      - Developing templates: github_guide/github_workflow.md
+      - Creating actions: github_guide/github_actions.md
   - User Guide:
       - Quick Start Guide: user_guide/quickstart.md
       - Installation: user_guide/installation.md
       - Repository Structure: user_guide/repository.md
+      - Lab setup: user_guide/lab_setup.md
   - Developer Guide:
-      - Lab setup: developer_guide/lab_setup.md
+      - Lab setup: user_guide/lab_setup.md
   - Code Reference: reference/
 
 plugins:
@@ -33,12 +37,18 @@ plugins:
       python:
         paths: [ fortimanager_template_sync ]
         options:
+          line_length: 120
+          separate_signature: true
           show_signature_annotations: true
           signature_crossrefs: true
           # add __init__ args to class and ignore __init__ summary text
           merge_init_into_class: true
           docstring_options:
             ignore_init_summary: true
+          members: true
+          show_labels: true
+          group_by_category: true
+          parameter_headings: false
 
 - section-index
 - literate-nav

@@ -1,0 +1,1 @@
+# Using GitHub actions in template repository

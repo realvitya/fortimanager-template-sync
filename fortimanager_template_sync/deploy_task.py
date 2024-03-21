@@ -76,16 +76,16 @@ class FMGDeployTask(CommonTask):
 
         Examples:
 
-        {
-            'FG01': {
-                'cli_status': {
-                    'root': {
-                        'name': 'test_global', 'status': 'modified', 'type': 'cli'
-                    }
-                },
-                'conf_status': 'insync', 'db_status': 'nomod', 'dev_status': 'installed'
+            {
+                'FG01': {
+                    'cli_status': {
+                        'root': {
+                            'name': 'test_global', 'status': 'modified', 'type': 'cli'
+                        }
+                    },
+                    'conf_status': 'insync', 'db_status': 'nomod', 'dev_status': 'installed'
+                }
             }
-        }
 
         Returns:
             List of Dicts with firewall name as key and VDOM as value
