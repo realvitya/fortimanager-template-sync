@@ -1,0 +1,8 @@
+# Example relint config
+# Do not commit this to original repository! All company must implement their own data leakage prevention!
+# Use this command to prevent git to stage your changes: git update-index --skip-worktree .relint.yml
+- name: No company data
+  pattern: '(?i)mycompany|mycompanydomains' # case insensitive flag
+  hint: Company pattern found!
+  filePattern: (?!.relint.yml).*
+  error: true
