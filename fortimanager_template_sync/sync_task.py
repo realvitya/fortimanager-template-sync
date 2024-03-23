@@ -87,12 +87,15 @@ class FMGSyncTask(CommonTask):
             else:
                 logger.info("No templates to update!")
             success = True
+        except Exception as err:
+            logger.error(err)
         finally:
             if changes and self.settings.prod_run:
                 logger.info("Changes applied successfully")
             else:
                 logger.info("No changes happened")
-            self.fmg.close(discard_changes=not success)
+            if self.fmg:
+                self.fmg.close(discard_changes=not success)
 
         return success
 

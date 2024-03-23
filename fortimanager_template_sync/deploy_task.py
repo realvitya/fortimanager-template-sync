@@ -121,7 +121,7 @@ class FMGDeployTask(CommonTask):
             if modified_vdoms:
                 to_deploy[fw] = modified_vdoms
                 num_of_vdoms += len(to_deploy[fw])
-        logger.debug(f"Found {num_of_vdoms} firewall/VDOMs to deploy")
+        logger.info(f"Found {num_of_vdoms} firewall/VDOMs to deploy")
         return to_deploy
 
     def _deploy_changes(self, to_deploy: Dict[str, List[str]]):
@@ -144,6 +144,7 @@ class FMGDeployTask(CommonTask):
             if not self.settings.prod_run:
                 logger.info("TEST - to deploy to %s", to_deploy)
                 return
+            logger.debug(f"Deploying to {scopes}")
             task = self.fmg.get_obj(InstallDeviceTask, adom=self.fmg.adom, flags=["auto_lock_ws"], scope=scopes)
             result = task.exec()
             if result.success:

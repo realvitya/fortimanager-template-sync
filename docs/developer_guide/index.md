@@ -1,6 +1,6 @@
 # Developer Guide
 
-First, thank you for being interested in developing this library! The following topics tries to describe the intended
+First, thank you for being interested in developing this tool! The following topics tries to describe the intended
 setup and workflow to develop the library!
 
 ## Installing dev tools
@@ -12,6 +12,8 @@ For development, you can use the project framework by installing the library wit
 git clone https://github.com/{YOURFORK}/fortimanager-template-sync.git
 # install in edit mode
 pip install -e ./fortimanager-template-sync[dev]
+# optionally install rich to get more fancy debug output and colors
+pip install -e ./fortimanager-template-sync[dev,rich]
 ```
 
 ## Using Invoke
@@ -43,7 +45,7 @@ This project uses mkdocs with material theme. Manual documentation is written in
 An easy way of developing is to run mkdocs server and monitor your changes in a browser window.
 
 Running the server:
-   
+
 ```shell
 invoke mkdocs-serve
 ```

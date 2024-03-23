@@ -54,7 +54,7 @@ name = "fortimanager_template_sync"
 fmgsync = "fortimanager_template_sync.__main__:app"
 
 [project.urls]
-Source = "https://github.com/viktorkertesz/fortimanager-template-sync"
+Source = "https://github.com/realvitya/fortimanager-template-sync"
 #Documentation = "https://"
 
 [tool.pytest.ini_options]
@@ -143,4 +143,4 @@ convention = "google"
 [tool.pymarkdown]
 plugins.md013.line_length = 120
 plugins.md013.code_block_line_length = 120
-plugins.md046.enabled = false  # interfere with Note, Tip and similar boxes
+plugins.md046.enabled = false  # interferes with Note, Tip and similar boxes (Admonitions)

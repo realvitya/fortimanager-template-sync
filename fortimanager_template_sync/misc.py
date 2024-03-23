@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 yaml = YAML(typ="safe", pure=True)
+# --8<-- [start:default_logging]
 DEFAULT_LOGGING = yaml.load(
     """\
 ---
@@ -40,6 +41,7 @@ root:
   handlers: [console]
 """
 )
+# --8<-- [end:default_logging]
 
 
 def get_logging_config(config: str):

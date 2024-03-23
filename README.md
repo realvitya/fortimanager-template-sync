@@ -17,11 +17,11 @@ FMG by itself does not support GIT repository as backend to store CLI templates 
 makes it hard to manage changes. Using GIT has many advances like tracking history, easy rollback to a version
 in time. Additionally one could use GitHub to even manage developing these templates in a team with tools like
 approval, review process, comments amongst others. Once the template changes are developed and approved, GIT can
-merge the changes to it's production branch which can trigger a run of this tool to sync up the changes to FMG.
+merge the changes to its production branch which can trigger a run of this tool to sync up the changes to FMG.
 
 ## Installation
 
-TBD
+
 
 ## Setup
 
