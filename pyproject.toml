@@ -40,7 +40,13 @@ dev = [
     "ruff",
     "pre-commit",
     "mypy",
-    "mkdocs-material"
+    "mkdocs-material",
+    "mkdocs-material-extensions",
+    "mkdocs-gen-files",
+    "mkdocstrings-python",
+    "mkdocs-section-index",
+    "mkdocs-literate-nav",
+    "mkdocs-autorefs",
 ]
 
 rich = [
@@ -55,7 +61,7 @@ fmgsync = "fortimanager_template_sync.__main__:app"
 
 [project.urls]
 Source = "https://github.com/realvitya/fortimanager-template-sync"
-#Documentation = "https://"
+Documentation = "https://realvitya.github.io/fortimanager-template-sync/"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

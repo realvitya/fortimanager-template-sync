@@ -36,7 +36,7 @@ These are the usable variables with example data:
 FMGSYNC_TEMPLATE_REPO=https://someserver/fortinet-templates.git
 FMGSYNC_TEMPLATE_BRANCH=acceptance
 FMGSYNC_GIT_TOKEN=verysecret
-FMGSYNC_LOCAL_PATH=somedir
+FMGSYNC_LOCAL_REPO=somedir
 FMGSYNC_FMG_URL=https://myfmg/
 FMGSYNC_FMG_USER=fmgsync
 FMGSYNC_FMG_PASS=verysecret
