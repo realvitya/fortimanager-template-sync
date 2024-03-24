@@ -28,12 +28,11 @@ class FMGDeployTask(CommonTask):
         fmg (FMGSync): FMG instance
     """
 
-    def run(self):
-        """Run task
+    def run(self) -> bool:
+        """Run deployment task
 
-        Raises:
-            FMGSyncVariableException: on invalid variable definitions or conflict
-            FMGSyncInvalidStatusException: on invalid device status
+        Returns:
+            (bool): True if task succeeded, False otherwise
         """
         success = True
         try:
@@ -74,26 +73,41 @@ class FMGDeployTask(CommonTask):
     def _get_deployable_firewalls(statuses: Dict[str, Dict[str, Any]]) -> Dict[str, List[str]]:
         """Get list of firewall names which are to be deployed.
 
-        Examples:
-
-        {
-            'FG01': {
-                'cli_status': {
-                    'root': {
-                        'name': 'test_global', 'status': 'modified', 'type': 'cli'
-                    }
+        Example input - statuses:
+            ```python
+            {
+                'FW01': {
+                    'cli_status': {
+                        'root': {
+                            'name': 'test_global', 'status': 'modified', 'type': 'cli'
+                        },
+                        'VDOM2': {
+                            'name': 'test_global', 'status': 'modified', 'type': 'cli'
+                        }
+                    },
+                    'conf_status': 'insync', 'db_status': 'nomod', 'dev_status': 'installed'
                 },
-                'conf_status': 'insync', 'db_status': 'nomod', 'dev_status': 'installed'
+                'FW01': {
+                    'cli_status': {
+                        'root': {
+                            'name': 'test_global', 'status': 'modified', 'type': 'cli'
+                        },
+                    },
+                    'conf_status': 'insync', 'db_status': 'nomod', 'dev_status': 'installed'
+                }
             }
-        }
+            ```
+
+        Example output:
+            ```python
+            {
+                "FW1": ["root", "VDOM2"],
+                "FW2": ["root"],
+            }
+            ```
 
         Returns:
             List of Dicts with firewall name as key and VDOM as value
-
-            {
-            "FW1": ["VDOM1", "VDOM2"],
-            "FW2": ["VDOM1"],
-            }
 
         Raises:
             (FMGSyncInvalidStatusException): In case there is a firewall with conf or db modified, error out.
@@ -107,7 +121,7 @@ class FMGDeployTask(CommonTask):
             if modified_vdoms:
                 to_deploy[fw] = modified_vdoms
                 num_of_vdoms += len(to_deploy[fw])
-        logger.debug(f"Found {num_of_vdoms} firewall/VDOMs to deploy")
+        logger.info(f"Found {num_of_vdoms} firewall/VDOMs to deploy")
         return to_deploy
 
     def _deploy_changes(self, to_deploy: Dict[str, List[str]]):
@@ -130,6 +144,7 @@ class FMGDeployTask(CommonTask):
             if not self.settings.prod_run:
                 logger.info("TEST - to deploy to %s", to_deploy)
                 return
+            logger.debug(f"Deploying to {scopes}")
             task = self.fmg.get_obj(InstallDeviceTask, adom=self.fmg.adom, flags=["auto_lock_ws"], scope=scopes)
             result = task.exec()
             if result.success:

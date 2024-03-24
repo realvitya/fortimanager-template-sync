@@ -38,12 +38,11 @@ class FMGSyncTask(CommonTask):
         fmg (FMGSync): FMG instance
     """
 
-    def run(self):
-        """Run task
+    def run(self) -> bool:
+        """Run sync task
 
-        Raises:
-            FMGSyncVariableException: on invalid variable definitions or conflict
-            FMGSyncInvalidStatusException: on invalid device status
+        Returns:
+            (bool): True if sync task succeeded, False otherwise
         """
         success = False
         changes = False
@@ -88,12 +87,15 @@ class FMGSyncTask(CommonTask):
             else:
                 logger.info("No templates to update!")
             success = True
+        except Exception as err:
+            logger.error(err)
         finally:
             if changes and self.settings.prod_run:
                 logger.info("Changes applied successfully")
             else:
                 logger.info("No changes happened")
-            self.fmg.close(discard_changes=not success)
+            if self.fmg:
+                self.fmg.close(discard_changes=not success)
 
         return success
 
@@ -118,7 +120,7 @@ class FMGSyncTask(CommonTask):
         ```
 
         Any other files are ignored. All directories are optional, it's not mandatory to have all of them.
-        See [docs](repository.md) for additional information.
+        See [docs](../user_guide/repository.md) for additional information.
 
         Returns:
             Repository with cloned templates

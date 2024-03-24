@@ -1,8 +1,8 @@
 """Configuration model"""
-
+from pathlib import Path
 from typing import Optional
 
-from pydantic import AnyHttpUrl, DirectoryPath, SecretStr, field_validator
+from pydantic import AnyHttpUrl, SecretStr, field_validator
 from pydantic_core import Url
 from pydantic_core.core_schema import ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,7 +14,7 @@ class FMGSyncSettings(BaseSettings):
     git_token: Optional[SecretStr] = None
     template_repo: str
     template_branch: str
-    local_repo: DirectoryPath
+    local_repo: Path
     fmg_url: str
     fmg_user: str
     fmg_pass: SecretStr
@@ -50,3 +50,9 @@ class FMGSyncSettings(BaseSettings):
         """convert value to string"""
         assert AnyHttpUrl(url)
         return url
+
+    @field_validator("local_repo")
+    def validate_local_repo(cls, path: Path):
+        """ensure local repo exists"""
+        path.mkdir(exist_ok=True)
+        return path

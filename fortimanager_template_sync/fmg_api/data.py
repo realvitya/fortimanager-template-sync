@@ -122,16 +122,16 @@ class TemplateTree:
     """Template data structure
 
     Attributes:
-        pre_run_templates
-        templates
-        template_groups
+        pre_run_templates (List[CLITemplate]): CLI pre-run template list
+        templates (List[CLITemplate]): CLI template list
+        template_groups (List[CLITemplateGroup]): CLI template group list
     """
 
     pre_run_templates: List[CLITemplate]
     templates: List[CLITemplate]
     template_groups: List[CLITemplateGroup]
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         """Check for empty tree
 
         Returns:

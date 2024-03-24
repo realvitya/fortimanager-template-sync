@@ -81,6 +81,9 @@ class FMGSync(FMG):
         Args:
             template_group: name of template
             target: a single object or a list of objects to assign to the template
+
+        Raises:
+            FMGInvalidDataException: if target is invalid or non-existent
         """
         if not isinstance(target, list):
             target = [target]

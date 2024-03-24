@@ -37,6 +37,7 @@ repos:
     hooks:
     -   id: relint
         name: check for sensitive patterns
+        args: []
 
 -   repo: local
     hooks:

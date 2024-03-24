@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 yaml = YAML(typ="safe", pure=True)
+# --8<-- [start:default_logging]
 DEFAULT_LOGGING = yaml.load(
     """\
 ---
@@ -40,6 +41,7 @@ root:
   handlers: [console]
 """
 )
+# --8<-- [end:default_logging]
 
 
 def get_logging_config(config: str):
@@ -70,7 +72,7 @@ def find_all_vars(template_content: str) -> set:
 
 
 def sanitize_variables(variables: List["Variable"]) -> List["Variable"]:
-    """De-dup and check variables, so they are uniq in name and default value
+    """De-dup and check variables, so they are unique in name and default value
 
     Args:
         variables: input list of variables
@@ -79,7 +81,7 @@ def sanitize_variables(variables: List["Variable"]) -> List["Variable"]:
         list of variables
 
     Raises:
-        FMGSyncVariableException on variable definitions
+        FMGSyncVariableException: on variable definition problem
     """
     good_variables = []
     for variable in variables:

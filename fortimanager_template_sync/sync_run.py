@@ -64,12 +64,11 @@ def sync_run(
         result = task.run()
     except Exception as err:
         logger.error(err)
-        exit(1)
     finally:
         logger.info("Operation took %ss", round(time.time() - start_time, 2))
-    if result:
-        logger.info("Sync task finished successfully!")
-        exit(0)
-    else:
-        logger.warning("Sync task finished with problems!")
-        exit(1)
+        if result:
+            logger.info("Sync task finished successfully!")
+            exit(0)
+        else:
+            logger.warning("Sync task finished with problems!")
+            exit(1)
