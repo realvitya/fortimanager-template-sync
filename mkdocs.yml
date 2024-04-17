@@ -2,7 +2,7 @@
 site_name: Fortimanager Template Sync
 site_description: Supporting of Fortinet CLI template development and deployment
 site_author: Viktor Kertesz
-site_url: https://fortimanager-template-sync.github.io/
+site_url: https://realvitya.github.io/fortimanager-template-sync/
 
 repo_name: realvitya/fortimanager-template-sync
 repo_url: https://github.com/realvitya/fortimanager-template-sync
