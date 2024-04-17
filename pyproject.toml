@@ -27,6 +27,7 @@ dependencies = [
     "pyfortinet",
     "jinja2",
     "ruamel.yaml",
+    "python-dotenv",
 ]
 
 [project.optional-dependencies]
